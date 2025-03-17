@@ -1,0 +1,36 @@
+# Rust build directory
+/target/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# SQLx offline data
+.sqlx/
+
+# Debug files
+*.pdb
+
+# Generated files
+Cargo.lock
+
+# Temporary files
+tmp/
+*.tmp
+*.bak
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/

@@ -1,0 +1,3 @@
+database_url = "postgres://portfolio:Portfolio@localhost:5432/portfolio_local"
+server_port = 4000
+secret_key = "secret"
