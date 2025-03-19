@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  portfolio_postgres:
+  postgres:
     image: postgres:17.4
     container_name: portfolio_postgres
     environment:
@@ -17,8 +17,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - portfolio_network
 
-  # portfolio_redis:
+  # redis:
   #   image: redis:7.4-alpine
   #   container_name: portfolio_redis
   #   ports:
@@ -30,7 +32,13 @@ services:
   #     interval: 5s
   #     timeout: 5s
   #     retries: 5
+  #   networks:
+  #     - portfolio_network
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  portfolio_network:
+    driver: bridge
