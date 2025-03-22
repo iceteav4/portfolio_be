@@ -35,12 +35,21 @@ fn verify_password(password: String, hashed_password: String) -> Result<bool, an
     )
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/login_with_password",
+    request_body = LoginWithPasswordRequest,
+    responses(
+        (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn login_with_password(
     State(state): State<AppState>,
     Json(req): Json<LoginWithPasswordRequest>,
 ) -> ApiResponse<AuthResponse> {
     // Validate credentials (implement your own logic here)
-    let user_repo = UserRepository::new(Arc::new(state.pg_pool.clone()));
+    let user_repo = UserRepository::new(Arc::new(state.pool.clone()));
     let user = match user_repo.get_by_email(&req.email).await {
         Ok(u) => u,
         Err(e) => {
@@ -83,7 +92,7 @@ pub async fn signup(
     State(state): State<AppState>,
     Json(req): Json<SignUpWithPasswordRequest>,
 ) -> ApiResponse<AuthResponse> {
-    let user_repo = UserRepository::new(Arc::new(state.pg_pool.clone()));
+    let user_repo = UserRepository::new(Arc::new(state.pool.clone()));
     match user_repo.get_by_email(&req.email).await {
         Ok(u) => {
             if u.is_some() {

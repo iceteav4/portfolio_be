@@ -7,5 +7,5 @@ use axum::{Router, routing::post};
 pub fn create_router() -> Router<AppState> {
     Router::new()
         .route("/signup", post(signup))
-        .route("/login", post(login_with_password))
+        .route("/login_with_password", post(login_with_password))
 }

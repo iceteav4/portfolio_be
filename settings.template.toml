@@ -1,3 +1,4 @@
 database_url = "postgres://portfolio:Portfolio@localhost:5432/portfolio_local"
+redis_url = "redis://localhost:6379"
 server_port = 4000
 secret_key = "secret"

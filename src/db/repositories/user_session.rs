@@ -22,12 +22,13 @@ impl UserSessionRepository {
         sqlx::query_as!(
             UserSession,
             r#"
-            INSERT INTO user_sessions (session_id, user_id, created_at, expires_at)
-            VALUES ($1, $2, $3, $4)
-            RETURNING session_id, user_id, created_at, expires_at
+            INSERT INTO user_sessions (session_id, user_id, is_active, created_at, expires_at)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING session_id, user_id, is_active, created_at, expires_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap() as i64,
             session.user_id,
+            true,
             OffsetDateTime::now_utc(),
             session.expires_at
         )
@@ -35,11 +36,11 @@ impl UserSessionRepository {
         .await
     }
 
-    pub async fn find_by_id(&self, id: i64) -> Result<Option<UserSession>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: i64) -> Result<Option<UserSession>, sqlx::Error> {
         sqlx::query_as!(
             UserSession,
             r#"
-            SELECT *
+            SELECT session_id, user_id, is_active, created_at, expires_at
             FROM user_sessions
             WHERE session_id = $1
             "#,

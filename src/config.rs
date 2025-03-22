@@ -1,4 +1,4 @@
-use config::{Config, File};
+use config::{Config, Environment, File};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -12,6 +12,7 @@ pub struct Settings {
 pub fn load_config() -> Result<Settings, config::ConfigError> {
     Config::builder()
         .add_source(File::with_name("settings.toml"))
+        .add_source(Environment::with_prefix("APP"))
         .build()
         .unwrap()
         .try_deserialize()

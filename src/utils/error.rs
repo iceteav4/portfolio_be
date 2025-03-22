@@ -30,9 +30,6 @@ pub enum AppError {
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 
-    #[error("Snowflake generation error")]
-    SnowflakeError,
-
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
@@ -79,13 +76,6 @@ impl IntoResponse for AppError {
                     "Failed to process data".to_string(),
                 )
             }
-            AppError::SnowflakeError => {
-                tracing::error!("Failed to generate ID");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to generate unique identifier".to_string(),
-                )
-            }
             AppError::ConfigError(msg) => {
                 tracing::error!("Configuration error: {}", msg);
                 (
@@ -110,6 +100,3 @@ impl IntoResponse for AppError {
         (status, axum::Json(body)).into_response()
     }
 }
-
-// Convenience type alias for Results
-pub type Result<T> = std::result::Result<T, AppError>;

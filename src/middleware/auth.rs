@@ -15,27 +15,22 @@ use axum_extra::{
 };
 use jsonwebtoken::{Header, Validation, decode, encode};
 use redis::AsyncCommands;
-use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use time::OffsetDateTime;
 
 use crate::models::auth::Claims;
-use crate::{db::repositories::user::UserRepository, models::user::UserStatus, state::AppState};
+use crate::state::AppState;
 use crate::{
     db::repositories::user_session::UserSessionRepository, models::user_session::CreateUserSession,
     utils::error::AppError,
 };
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct CachedClaims {
-    claims: Claims,
-    is_active: bool,
-}
 
 // Convert UserSession to JWT token
 pub async fn create_token(
     session: CreateUserSession,
     state: &AppState,
 ) -> Result<String, AppError> {
-    let repository = UserSessionRepository::new(Arc::new(state.pg_pool.clone()));
+    let repository = UserSessionRepository::new(Arc::new(state.pool.clone()));
     let new_session = repository.create_user_session(session).await?;
 
     // Ensure the claims are properly formatted
@@ -46,9 +41,39 @@ pub async fn create_token(
         iat: new_session.created_at.unix_timestamp() as usize,
     };
 
-    encode(&Header::default(), &claims, &state.encoding_key()).map_err(AppError::JwtError)
-}
+    let token =
+        encode(&Header::default(), &claims, &state.encoding_key()).map_err(AppError::JwtError)?;
 
+    // Cache the validated claims using the connection
+    let cache_key = format!("token:{}", token);
+
+    // Get a Redis connection and check cache
+    let mut redis_conn = state.redis_conn.clone();
+
+    if let Ok(json) = serde_json::to_string(&claims) {
+        let _: Result<(), _> = redis_conn
+            .set_ex(&cache_key, json, 30 * 60) // 30 minutes
+            .await;
+    }
+
+    Ok(token)
+}
+async fn is_session_valid(session_id: i64, pool: Arc<PgPool>) -> Result<bool, AppError> {
+    let session_repo = UserSessionRepository::new(pool);
+    let session = session_repo.get_by_id(session_id).await?;
+    match session {
+        Some(session) => {
+            if !session.is_active {
+                return Err(AppError::Unauthorized("Session not active".to_string()));
+            }
+            if session.expires_at < OffsetDateTime::now_utc() {
+                return Err(AppError::Unauthorized("Session expired".to_string()));
+            }
+            Ok(true)
+        }
+        None => Err(AppError::Unauthorized("Session not found".to_string())),
+    }
+}
 impl FromRequestParts<AppState> for Claims {
     type Rejection = AppError;
 
@@ -60,6 +85,8 @@ impl FromRequestParts<AppState> for Claims {
                 AppError::Unauthorized("Missing or invalid authorization header".to_string())
             })?;
 
+        let pool = Arc::new(state.pool.clone());
+
         // Try to get claims from cache first
         let token = bearer.token();
         let cache_key = format!("token:{}", token);
@@ -68,38 +95,28 @@ impl FromRequestParts<AppState> for Claims {
         let mut redis_conn = state.redis_conn.clone();
 
         if let Ok(cached_result) = redis_conn.get::<_, String>(&cache_key).await {
-            if let Ok(cached_claims) = serde_json::from_str::<CachedClaims>(&cached_result) {
-                return Ok(cached_claims.claims);
+            if let Ok(claims) = serde_json::from_str::<Claims>(&cached_result) {
+                if is_session_valid(claims.session_id, pool.clone()).await? {
+                    return Ok(claims);
+                }
             }
         }
 
         // If not in cache, validate token and check user status
         let mut validation = Validation::default();
         validation.validate_aud = false;
+        validation.validate_exp = true;
 
         let token_data = decode::<Claims>(token, &state.decoding_key(), &validation)
             .map_err(|e| AppError::JwtError(e))?;
-
-        let user_repo = UserRepository::new(Arc::new(state.pg_pool.clone()));
-        let is_active = match user_repo.get_by_id(token_data.claims.user_id).await {
-            Ok(Some(user)) if user.status == UserStatus::Active => true,
-            _ => {
-                return Err(AppError::Unauthorized(
-                    "User not found or not active".to_string(),
-                ));
-            }
-        };
-
-        // Cache the validated claims
-        let cached_claims = CachedClaims {
-            claims: token_data.claims.clone(),
-            is_active,
-        };
+        if !is_session_valid(token_data.claims.session_id, pool.clone()).await? {
+            return Err(AppError::Unauthorized("Session not valid".to_string()));
+        }
 
         // Cache the validated claims using the connection
-        if let Ok(json) = serde_json::to_string(&cached_claims) {
+        if let Ok(json) = serde_json::to_string(&token_data.claims) {
             let _: Result<(), _> = redis_conn
-                .set_ex(&cache_key, json, 300) // 300 seconds = 5 minutes
+                .set_ex(&cache_key, json, 30 * 60) // 30 minutes
                 .await;
         }
 

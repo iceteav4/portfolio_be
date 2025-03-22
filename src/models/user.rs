@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use time::OffsetDateTime;
-
+use utoipa::ToSchema;
 #[derive(Debug, Serialize, Deserialize, Type, PartialEq)]
 #[sqlx(type_name = "user_status")] // matches the PostgreSQL type name
 #[sqlx(rename_all = "lowercase")] // ensures enum variants match DB values
@@ -25,7 +25,7 @@ pub struct User {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserResponse {
     pub id: i64,
     pub name: Option<String>,

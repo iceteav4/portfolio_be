@@ -1,19 +1,27 @@
-use axum::{Json, extract::State};
-use serde_json::json;
+use crate::{
+    models::{api_response::ApiResponse, health::HealthResponse},
+    state::AppState,
+};
+use axum::extract::State;
 use time::OffsetDateTime;
 
-use crate::state::AppState;
-
-pub async fn health_check(State(state): State<AppState>) -> Json<serde_json::Value> {
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Server is healthy", body = ApiResponse<HealthResponse>),
+    )
+)]
+pub async fn health_check(State(state): State<AppState>) -> ApiResponse<HealthResponse> {
     // Access database pool from a global state or singleton
     // This assumes you have a way to access the database connection without state parameter
-    let db_pool = state.pg_pool.clone();
+    let pool = state.pool.clone();
 
-    let db_status = sqlx::query("SELECT 1").fetch_one(&db_pool).await.is_ok();
+    let db_status = sqlx::query("SELECT 1").fetch_one(&pool).await.is_ok();
 
-    Json(json!({
-        "status": "ok",
-        "db_status": db_status,
-        "timestamp": OffsetDateTime::now_utc().unix_timestamp(),
-    }))
+    ApiResponse::success(HealthResponse {
+        status: "ok".to_string(),
+        db_status,
+        timestamp: OffsetDateTime::now_utc().unix_timestamp() as u64,
+    })
 }
