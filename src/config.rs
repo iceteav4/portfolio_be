@@ -6,6 +6,7 @@ pub struct Settings {
     pub database_url: String,
     pub server_port: u16,
     pub secret_key: String,
+    pub redis_url: String,
 }
 
 pub fn load_config() -> Result<Settings, config::ConfigError> {

@@ -1,21 +1,13 @@
 use std::sync::Arc;
 
+use crate::models::user_session::{CreateUserSession, UserSession};
+use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 use sqlx::PgPool;
 use time::OffsetDateTime;
-
-use crate::models::user_session::UserSession;
-use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]
 pub struct UserSessionRepository {
     pool: Arc<PgPool>,
-}
-
-// Input type for creating user sessions
-#[derive(Debug)]
-pub struct CreateUserSession {
-    pub user_id: i64,
-    pub expires_at: Option<OffsetDateTime>,
 }
 
 impl UserSessionRepository {
@@ -23,19 +15,20 @@ impl UserSessionRepository {
         Self { pool }
     }
 
-    pub async fn create_session(
+    pub async fn create_user_session(
         &self,
         session: CreateUserSession,
     ) -> Result<UserSession, sqlx::Error> {
         sqlx::query_as!(
             UserSession,
             r#"
-            INSERT INTO user_sessions (session_id, user_id, expires_at)
-            VALUES ($1, $2, $3)
+            INSERT INTO user_sessions (session_id, user_id, created_at, expires_at)
+            VALUES ($1, $2, $3, $4)
             RETURNING session_id, user_id, created_at, expires_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap() as i64,
             session.user_id,
+            OffsetDateTime::now_utc(),
             session.expires_at
         )
         .fetch_one(self.pool.as_ref())
@@ -46,7 +39,7 @@ impl UserSessionRepository {
         sqlx::query_as!(
             UserSession,
             r#"
-            SELECT session_id, user_id, created_at, expires_at
+            SELECT *
             FROM user_sessions
             WHERE session_id = $1
             "#,

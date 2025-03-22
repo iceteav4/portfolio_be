@@ -20,24 +20,24 @@ where
     pub fn success(data: T) -> Self {
         Self {
             message: None,
-            data: Some(data),
-            status_code: StatusCode::OK.as_u16(),
+            status_code: 200,
             unix_time: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
+            data: Some(data),
         }
     }
 
-    pub fn error(message: impl Into<String>) -> ApiResponse<T> {
+    pub fn error(status_code: StatusCode, message: impl Into<String>) -> ApiResponse<T> {
         Self {
             message: Some(message.into()),
-            data: None,
-            status_code: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            status_code: status_code.as_u16(),
             unix_time: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
+            data: None,
         }
     }
 }
@@ -47,8 +47,11 @@ where
     T: Serialize,
 {
     fn into_response(self) -> axum::response::Response {
-        let status =
-            StatusCode::from_u16(self.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let status = if self.status_code >= 500 {
+            StatusCode::from_u16(self.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+        } else {
+            StatusCode::OK
+        };
         (status, Json(self)).into_response()
     }
 }

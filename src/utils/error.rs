@@ -22,9 +22,8 @@ pub enum AppError {
     #[error("Internal server error")]
     InternalServerError,
 
-    #[error("Transaction error: {0}")]
-    TransactionError(#[from] crate::utils::coingecko_exporter::TransactionError),
-
+    // #[error("Transaction error: {0}")]
+    // TransactionError(#[from] crate::utils::coingecko_exporter::TransactionError),
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
@@ -59,13 +58,13 @@ impl IntoResponse for AppError {
             }
             AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            AppError::TransactionError(e) => {
-                tracing::error!("Transaction error: {:?}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to process transaction data".to_string(),
-                )
-            }
+            // AppError::TransactionError(e) => {
+            //     tracing::error!("Transaction error: {:?}", e);
+            //     (
+            //         StatusCode::INTERNAL_SERVER_ERROR,
+            //         "Failed to process transaction data".to_string(),
+            //     )
+            // }
             AppError::IoError(e) => {
                 tracing::error!("IO error: {:?}", e);
                 (

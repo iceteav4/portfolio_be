@@ -2,18 +2,12 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::models::user::User;
+use crate::models::user::{CreateUser, User, UserStatus};
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]
 pub struct UserRepository {
     pool: Arc<PgPool>,
-}
-
-// Input type for creating users
-#[derive(Debug)]
-pub struct CreateUser {
-    pub name: String,
 }
 
 impl UserRepository {
@@ -25,26 +19,43 @@ impl UserRepository {
         sqlx::query_as!(
             User,
             r#"
-            INSERT INTO users (id, name)
-            VALUES ($1, $2)
-            RETURNING id, email, phone_number, name, created_at, updated_at
+            INSERT INTO users (id, status, email, hashed_password, name)
+            VALUES ($1, $2::public.user_status, $3, $4, $5)
+            RETURNING id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap() as i64,
-            user.name
+            UserStatus::Active as _,
+            user.email,
+            user.hashed_password,
+            user.name,
         )
         .fetch_one(self.pool.as_ref())
         .await
     }
 
-    pub async fn find_by_id(&self, id: i64) -> Result<Option<User>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: i64) -> Result<Option<User>, sqlx::Error> {
         sqlx::query_as!(
             User,
             r#"
-            SELECT *
+            SELECT id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
             FROM users
             WHERE id = $1
             "#,
             id as i64
+        )
+        .fetch_optional(self.pool.as_ref())
+        .await
+    }
+
+    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
+        sqlx::query_as!(
+            User,
+            r#"
+            SELECT id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
+            FROM users
+            WHERE email = $1
+            "#,
+            email
         )
         .fetch_optional(self.pool.as_ref())
         .await

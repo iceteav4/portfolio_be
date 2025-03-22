@@ -7,16 +7,13 @@ mod routes;
 mod state;
 mod utils;
 use anyhow::Result;
-use axum::{Router, routing::get};
+use axum::Router;
 use config::load_config;
 use db::postgres::init_pg_pool;
-use handlers::health::health_check;
-use state::AppState;
 use std::sync::Arc;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{Level, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize tracing
@@ -37,17 +34,28 @@ async fn main() -> Result<()> {
     // init pg pool
     let pg_pool = init_pg_pool(&settings.database_url).await?;
     info!("Database connection established");
+    // Create app state
+    let state = Arc::new(
+        state::AppStateInner::new(pg_pool, settings.secret_key, settings.redis_url)
+            .await
+            .unwrap(),
+    );
+    // Create separate routers
+    let public_routes = Router::new()
+        .nest("/health", routes::health::create_router())
+        .nest("/auth", routes::auth::create_router());
 
-    // Create app state wrapped in Arc
-    let state = Arc::new(AppState::new(state::AppStateInner {
-        pg_pool: pg_pool,
-        secret_key: settings.secret_key,
-    }));
-
-    // init server with tracing middleware
-    let app = Router::new()
-        .route("/health", get(health_check))
+    let protected_routes = Router::new()
         .nest("/api", routes::api::create_router())
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::require_authentication,
+        ));
+
+    // Combine routers
+    let app = Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
