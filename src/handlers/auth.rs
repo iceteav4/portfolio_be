@@ -2,10 +2,10 @@ use crate::{
     db::repositories::user::UserRepository,
     middleware::auth::create_token,
     models::{
-        api_response::ApiResponse,
-        auth::{AuthResponse, LoginWithPasswordRequest, SignUpWithPasswordRequest},
-        user::CreateUser,
-        user_session::CreateUserSession,
+        domain::user::CreateUser,
+        domain::user_session::CreateUserSession,
+        dto::api_response::ApiResponse,
+        dto::auth::{AuthResponse, LoginWithPasswordRequest, SignUpWithPasswordRequest},
     },
     state::AppState,
 };

@@ -46,7 +46,7 @@ where
             data: None,
         }
     }
-
+    #[allow(dead_code)]
     pub fn errors(errors: Vec<ErrorResponse>) -> ApiResponse<T> {
         Self {
             unix_time: SystemTime::now()

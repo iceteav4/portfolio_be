@@ -18,11 +18,11 @@ use redis::AsyncCommands;
 use sqlx::PgPool;
 use time::OffsetDateTime;
 
-use crate::models::auth::Claims;
+use crate::models::domain::auth::Claims;
 use crate::state::AppState;
 use crate::{
-    db::repositories::user_session::UserSessionRepository, models::user_session::CreateUserSession,
-    utils::error::AppError,
+    db::repositories::user_session::UserSessionRepository,
+    models::domain::user_session::CreateUserSession, utils::error::AppError,
 };
 
 // Convert UserSession to JWT token
@@ -30,8 +30,8 @@ pub async fn create_token(
     session: CreateUserSession,
     state: &AppState,
 ) -> Result<String, AppError> {
-    let repository = UserSessionRepository::new(Arc::new(state.pool.clone()));
-    let new_session = repository.create_user_session(session).await?;
+    let repo = UserSessionRepository::new(Arc::new(state.pool.clone()));
+    let new_session = repo.create_user_session(session).await?;
 
     // Ensure the claims are properly formatted
     let claims = Claims {
@@ -41,8 +41,8 @@ pub async fn create_token(
         iat: new_session.created_at.unix_timestamp() as usize,
     };
 
-    let token =
-        encode(&Header::default(), &claims, &state.encoding_key()).map_err(AppError::JwtError)?;
+    let token = encode(&Header::default(), &claims, &state.encoding_key())
+        .map_err(|_| AppError::Unauthorized("Error when generating token".to_string()))?;
 
     // Cache the validated claims using the connection
     let cache_key = format!("token:{}", token);
@@ -74,6 +74,7 @@ async fn is_session_valid(session_id: i64, pool: Arc<PgPool>) -> Result<bool, Ap
         None => Err(AppError::Unauthorized("Session not found".to_string())),
     }
 }
+
 impl FromRequestParts<AppState> for Claims {
     type Rejection = AppError;
 
@@ -108,7 +109,7 @@ impl FromRequestParts<AppState> for Claims {
         validation.validate_exp = true;
 
         let token_data = decode::<Claims>(token, &state.decoding_key(), &validation)
-            .map_err(|e| AppError::JwtError(e))?;
+            .map_err(|e| AppError::Unauthorized(e.to_string()))?;
         if !is_session_valid(token_data.claims.session_id, pool.clone()).await? {
             return Err(AppError::Unauthorized("Session not valid".to_string()));
         }

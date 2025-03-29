@@ -1,0 +1,20 @@
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+
+use crate::models::entities::user::UserStatus;
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserResponse {
+    pub id: i64,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserMeResponse {
+    pub id: i64,
+    pub status: UserStatus,
+    pub email: String,
+    pub phone_number: Option<String>,
+    pub name: Option<String>,
+    pub created_at: String,
+}

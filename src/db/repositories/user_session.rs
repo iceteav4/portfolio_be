@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::models::user_session::{CreateUserSession, UserSession};
+use crate::models::domain::user_session::CreateUserSession;
+use crate::models::entities::user_session::UserSession;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 use sqlx::PgPool;
 use time::OffsetDateTime;

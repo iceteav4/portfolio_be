@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::models::user::{CreateUser, User, UserStatus};
+use crate::models::domain::user::CreateUser;
+use crate::models::entities::user::User;
+use crate::models::entities::user::UserStatus;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]

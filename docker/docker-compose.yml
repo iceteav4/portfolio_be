@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:17.4
-    container_name: portfolio_postgres
+    container_name: postgres17.4
     environment:
       - POSTGRES_USER=portfolio
       - POSTGRES_PASSWORD=Portfolio
@@ -17,12 +17,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - portfolio_network
 
   redis:
     image: redis:7.4-alpine
-    container_name: portfolio_redis
+    container_name: redis7.4
     ports:
       - "6379:6379"
     volumes:
@@ -32,13 +30,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - portfolio_network
 
 volumes:
   postgres_data:
   redis_data:
-
-networks:
-  portfolio_network:
-    driver: bridge

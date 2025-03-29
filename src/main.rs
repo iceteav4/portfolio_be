@@ -1,3 +1,4 @@
+mod clients;
 mod config;
 mod db;
 mod handlers;
@@ -9,7 +10,6 @@ mod utils;
 use anyhow::Result;
 use axum::Router;
 use config::load_config;
-use db::postgres::init_pg_pool;
 use std::sync::Arc;
 use tokio::signal;
 use tower_http::trace::{self, TraceLayer};
@@ -26,13 +26,14 @@ use utoipa_swagger_ui::SwaggerUi;
         handlers::health::health_check,
         handlers::auth::login_with_password,
         handlers::users::get_user_by_id,
+        handlers::users::get_user_me,
     ),
     components(
         // List your schema components here
         schemas(
-            models::auth::LoginWithPasswordRequest,
-            models::auth::AuthResponse,
-            models::user::UserResponse,
+            models::dto::auth::LoginWithPasswordRequest,
+            models::dto::auth::AuthResponse,
+            models::dto::user::UserResponse,
         )
     ),
     tags(
@@ -47,27 +48,18 @@ struct ApiDoc;
 async fn main() -> Result<()> {
     // Initialize tracing
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "app=info,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::EnvFilter::new(
+            "app=info,tower_http=debug",
+        ))
+        .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .init();
-
     info!("Starting application");
 
     // load config
     let settings = load_config()?;
-    info!("Config loaded successfully");
 
-    // init pg pool
-    let pg_pool = init_pg_pool(&settings.database_url).await?;
     // Create app state
-    let state = Arc::new(
-        state::AppStateInner::new(pg_pool, settings.secret_key, settings.redis_url)
-            .await
-            .unwrap(),
-    );
+    let state = Arc::new(state::AppStateInner::new(&settings).await.unwrap());
     state.health_check().await?;
     info!("Health check state passed");
 
@@ -96,10 +88,10 @@ async fn main() -> Result<()> {
         );
     info!("Router configured");
 
-    let addr = format!("0.0.0.0:{}", settings.server_port);
+    let addr = format!("0.0.0.0:{}", settings.server.port);
     info!("Starting server on {}", addr);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
 
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
     // run server
     info!("Server starting...");
     axum::serve(listener, app).await?;

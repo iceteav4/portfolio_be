@@ -1,5 +1,5 @@
 use crate::{
-    models::{api_response::ApiResponse, health::HealthResponse},
+    models::dto::{api_response::ApiResponse, health::HealthResponse},
     state::AppState,
 };
 use axum::extract::State;

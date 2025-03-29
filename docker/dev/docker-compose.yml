@@ -1,0 +1,250 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:7.0-alpine
+    container_name: music_monster_redis
+    ports:
+      - 26379:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - music_monster
+
+  scylladb:
+    image: scylladb/scylla:6.1
+    container_name: music_monster_scylladb
+    ports:
+      - 29042:9042
+      - 29142:9142
+    volumes:
+      - scylla_data:/var/lib/scylla
+    networks:
+      - music_monster
+
+  rabbitmq:
+    container_name: music_monster_rabbitmq
+    build:
+      context: ./rabbitmq3.12
+      dockerfile: Dockerfile
+    environment:
+      - RABBITMQ_DEFAULT_USER=blokparti
+      - RABBITMQ_DEFAULT_PASS=BLOKPARTi
+    ports:
+      - 25672:5672
+      - 15672:15672
+    networks:
+      - music_monster
+
+  mongodb:
+    image: mongo:7.0.12
+    container_name: music_monster_mongodb
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=blokparti
+      - MONGO_INITDB_ROOT_PASSWORD=BLOKPARTi
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - music_monster
+
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+  #   container_name: elasticsearch
+  #   environment:
+  #     - xpack.security.enabled=false
+  #     - discovery.type=single-node
+  #     - bootstrap.memory_lock=true
+  #     - "ES_JAVA_OPTS=-Xms2048m -Xmx2048m"
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
+  #   networks:
+  #     - music_monster
+
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.5.3
+  #   user: "0:0"
+  #   container_name: music_monster_zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - 22181:2181
+  #   volumes:
+  #     - ./docker_data/zookeeper/data:/var/lib/zookeeper/data
+  #     - ./docker_data/zookeeper/log:/var/lib/zookeeper/log
+  #   networks:
+  #     - music_monster
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.5.3
+  #   user: "0:0"
+  #   container_name: music_monster_kafka
+  #   depends_on:
+  #     - zookeeper
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #   ports:
+  #     - 29092:29092
+  #   volumes:
+  #     - ./docker_data/kafka/data:/var/lib/kafka/data
+  #   networks:
+  #     - music_monster
+
+  # schema-registry:
+  #   image: confluentinc/cp-schema-registry:latest
+  #   hostname: schema-registry
+  #   container_name: schema-registry
+  #   ports:
+  #     - '8081:8081'
+  #   environment:
+  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
+  #     SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+  #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+  #   networks:
+  #     - music_monster
+
+  # kafka-connect:
+  #   build:
+  #     context: .
+  #     dockerfile: connect.Dockerfile
+  #   ports:
+  #     - "8083:8083"
+  #   environment:
+  #     CONNECT_BOOTSTRAP_SERVERS: kafka:9092
+  #     CONNECT_GROUP_ID: "connect"
+  #     CONNECT_CONFIG_STORAGE_TOPIC: demo-connect-configs
+  #     CONNECT_OFFSET_STORAGE_TOPIC: demo-connect-offsets
+  #     CONNECT_STATUS_STORAGE_TOPIC: demo-connect-status
+  #     CONNECT_REPLICATION_FACTOR: 1
+  #     CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+  #     CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+  #     CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+  #     CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+  #     CONNECT_VALUE_CONVERTER: "io.confluent.connect.avro.AvroConverter"
+  #     CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+  #     CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+  #     CONNECT_REST_ADVERTISED_HOST_NAME: "connect"
+  #     CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/custom-plugins"
+  #     CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+  #     CONNECT_LOG4J_LOGGERS: org.reflections=ERROR
+  #     # CLASSPATH required due to CC-2422
+  #     CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-6.2.0.jar
+
+  #     CONNECT_SASL_MECHANISM: PLAINTEXT
+  #     CONNECT_CONSUMER_SASL_MECHANISM: PLAINTEXT
+  #     CONNECT_PRODUCER_SASL_MECHANISM: PLAINTEXT
+
+  #   volumes:
+  #     - ./scylla-cdc-source-connector:/custom-plugins
+  #   networks:
+  #     - music_monster
+
+  # akhq:
+  #   image: tchiotludo/akhq
+  #   environment:
+  #     AKHQ_CONFIGURATION: |
+  #       akhq:
+  #         connections:
+  #           docker-kafka-server:
+  #             properties:
+  #               bootstrap.servers: "kafka:9092"
+  #             schema-registry:
+  #               url: "http://schema-registry:8081"
+  #   ports:
+  #     - '8085:8080'
+  #   networks:
+  #     - music_monster
+
+#  kibana:
+#    image: docker.elastic.co/kibana/kibana:8.12.2
+#    ports:
+#      - "5601:5601"
+#    environment:
+#      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+
+#  spark-master:
+#    image: gettyimages/spark
+#    command: bin/spark-class org.apache.spark.deploy.master.Master -h spark-master
+#    hostname: master
+#    environment:
+#      MASTER: spark://spark-master:7077
+#      SPARK_CONF_DIR: /conf
+#      SPARK_PUBLIC_DNS: spark-master
+#    networks:
+#      - music_monster
+#    expose:
+#      - 7001
+#      - 7002
+#      - 7003
+#      - 7004
+#      - 7005
+#      - 7006
+#      - 7077
+#      - 6066
+#    ports:
+#      - 4040:4040
+#      - 6066:6066
+#      - 7077:7077
+#      - 8080:8080
+#    volumes:
+#      - ./data/spark-master:/tmp/data
+#  spark-worker:
+#    image: gettyimages/spark
+#    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+#    hostname: spark-worker
+#    environment:
+#      SPARK_WORKER_CORES: 1
+#      SPARK_WORKER_MEMORY: 1024m
+#      SPARK_WORKER_PORT: 8881
+#      SPARK_WORKER_WEBUI_PORT: 8081
+#      SPARK_PUBLIC_DNS: spark-worker
+#    networks:
+#      - music_monster
+#    expose:
+#      - 7012
+#      - 7013
+#      - 7014
+#      - 7015
+#      - 7016
+#      - 8881
+#    ports:
+#      - 8081:8081
+#    volumes:
+#      - ./data/spark-worker:/tmp/data
+#    depends_on:
+#      - spark-master
+
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: "music_monster_mysql"
+  #   cap_add:
+  #     - SYS_NICE
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=BLOKPARTi
+  #     - MYSQL_DATABASE=music_monster
+  #     - MYSQL_USER=blokparti
+  #     - MYSQL_PASSWORD=BLOKPARTi
+  #   ports:
+  #     - 23306:3306
+  #   volumes:
+  #     - ./docker_data/mysql/data:/var/lib/mysql
+  #   networks:
+  #     - music_monster
+volumes:
+  redis_data:
+  scylla_data:
+  mongodb_data:
+networks:
+  music_monster:
+    driver: bridge

@@ -4,6 +4,8 @@ use jsonwebtoken::{DecodingKey, EncodingKey};
 use redis::{AsyncCommands, Client, aio::ConnectionManager};
 use sqlx::PgPool;
 
+use crate::{clients::coingecko::CoinGeckoClient, config::Settings, db::postgres::init_pg_pool};
+
 #[derive(Debug, thiserror::Error)]
 pub enum StateError {
     #[error("Redis error: {0}")]
@@ -18,22 +20,25 @@ pub struct AppStateInner {
     pub pool: PgPool,
     secret_key: String,
     pub redis_conn: ConnectionManager,
+    pub coingecko_client: CoinGeckoClient,
 }
 
 pub type AppState = Arc<AppStateInner>;
 
 impl AppStateInner {
-    pub async fn new(
-        pg_pool: PgPool,
-        secret_key: String,
-        redis_url: String,
-    ) -> Result<Self, StateError> {
-        let redis = Client::open(redis_url)?;
+    pub async fn new(app_settings: &Settings) -> Result<Self, StateError> {
+        // init pg pool
+        let pg_pool = init_pg_pool(&app_settings.postgres.url)
+            .await
+            .map_err(|e| StateError::Database(e.to_string()))?;
+        let redis = Client::open(app_settings.redis.url.clone())?;
         let redis_conn = ConnectionManager::new(redis).await?;
+        let coingecko_client = CoinGeckoClient::new(app_settings.coingecko.api_key.clone());
         Ok(Self {
             pool: pg_pool,
-            secret_key,
+            secret_key: app_settings.server.secret_key.clone(),
             redis_conn,
+            coingecko_client,
         })
     }
 

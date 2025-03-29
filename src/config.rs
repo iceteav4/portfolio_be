@@ -2,11 +2,32 @@ use config::{Config, Environment, File};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct Settings {
-    pub database_url: String,
-    pub server_port: u16,
+pub struct Server {
+    pub port: u16,
     pub secret_key: String,
-    pub redis_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Postgres {
+    pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Redis {
+    pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Coingecko {
+    pub api_key: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Settings {
+    pub server: Server,
+    pub postgres: Postgres,
+    pub redis: Redis,
+    pub coingecko: Coingecko,
 }
 
 pub fn load_config() -> Result<Settings, config::ConfigError> {
