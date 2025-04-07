@@ -7,11 +7,11 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 
 #[derive(Debug)]
-pub struct UserSessionRepository {
+pub struct UserSessionRepo {
     pool: Arc<PgPool>,
 }
 
-impl UserSessionRepository {
+impl UserSessionRepo {
     pub fn new(pool: Arc<PgPool>) -> Self {
         Self { pool }
     }

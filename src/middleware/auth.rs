@@ -21,7 +21,7 @@ use time::OffsetDateTime;
 use crate::models::domain::auth::Claims;
 use crate::state::AppState;
 use crate::{
-    db::repositories::user_session::UserSessionRepository,
+    db::repositories::user_session::UserSessionRepo,
     models::domain::user_session::CreateUserSession, utils::error::AppError,
 };
 
@@ -30,7 +30,7 @@ pub async fn create_token(
     session: CreateUserSession,
     state: &AppState,
 ) -> Result<String, AppError> {
-    let repo = UserSessionRepository::new(Arc::new(state.pool.clone()));
+    let repo = UserSessionRepo::new(Arc::new(state.pool.clone()));
     let new_session = repo.create_user_session(session).await?;
 
     // Ensure the claims are properly formatted
@@ -59,7 +59,7 @@ pub async fn create_token(
     Ok(token)
 }
 async fn is_session_valid(session_id: i64, pool: Arc<PgPool>) -> Result<bool, AppError> {
-    let session_repo = UserSessionRepository::new(pool);
+    let session_repo = UserSessionRepo::new(pool);
     let session = session_repo.get_by_id(session_id).await?;
     match session {
         Some(session) => {

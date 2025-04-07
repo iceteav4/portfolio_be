@@ -8,28 +8,28 @@ use crate::models::entities::user::UserStatus;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]
-pub struct UserRepository {
+pub struct UserRepo {
     pool: Arc<PgPool>,
 }
 
-impl UserRepository {
+impl UserRepo {
     pub fn new(pool: Arc<PgPool>) -> Self {
         Self { pool }
     }
 
-    pub async fn create_user(&self, user: CreateUser) -> Result<User, sqlx::Error> {
+    pub async fn create_user(&self, inp: CreateUser) -> Result<User, sqlx::Error> {
         sqlx::query_as!(
             User,
             r#"
             INSERT INTO users (id, status, email, hashed_password, name)
-            VALUES ($1, $2::public.user_status, $3, $4, $5)
-            RETURNING id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, email, phone_number, hashed_password, name, status, created_at, updated_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap() as i64,
-            UserStatus::Active as _,
-            user.email,
-            user.hashed_password,
-            user.name,
+            UserStatus::Active.as_str(),
+            inp.email,
+            inp.hashed_password,
+            inp.name,
         )
         .fetch_one(self.pool.as_ref())
         .await

@@ -1,5 +1,5 @@
 use crate::{
-    db::repositories::user::UserRepository,
+    db::repositories::user::UserRepo,
     middleware::auth::create_token,
     models::{
         domain::user::CreateUser,
@@ -49,7 +49,7 @@ pub async fn login_with_password(
     Json(req): Json<LoginWithPasswordRequest>,
 ) -> ApiResponse<AuthResponse> {
     // Validate credentials (implement your own logic here)
-    let user_repo = UserRepository::new(Arc::new(state.pool.clone()));
+    let user_repo = UserRepo::new(Arc::new(state.pool.clone()));
     let user = match user_repo.get_by_email(&req.email).await {
         Ok(u) => u,
         Err(e) => {
@@ -92,7 +92,7 @@ pub async fn signup(
     State(state): State<AppState>,
     Json(req): Json<SignUpWithPasswordRequest>,
 ) -> ApiResponse<AuthResponse> {
-    let user_repo = UserRepository::new(Arc::new(state.pool.clone()));
+    let user_repo = UserRepo::new(Arc::new(state.pool.clone()));
     match user_repo.get_by_email(&req.email).await {
         Ok(u) => {
             if u.is_some() {

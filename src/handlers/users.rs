@@ -1,7 +1,7 @@
 use crate::models::domain::auth::Claims;
 use crate::models::dto::{api_response::ApiResponse, user::UserMeResponse};
 use crate::state::AppState;
-use crate::{db::repositories::user::UserRepository, models::dto::user::UserResponse};
+use crate::{db::repositories::user::UserRepo, models::dto::user::UserResponse};
 use axum::Extension;
 use axum::{
     extract::{Path, State},
@@ -22,7 +22,7 @@ pub async fn get_user_by_id(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> ApiResponse<UserResponse> {
-    let user = UserRepository::new(Arc::new(state.pool.clone()))
+    let user = UserRepo::new(Arc::new(state.pool.clone()))
         .get_by_id(id)
         .await;
     match user {
@@ -45,7 +45,7 @@ pub async fn get_user_me(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> ApiResponse<UserMeResponse> {
-    let user_repo = UserRepository::new(Arc::new(state.pool.clone()));
+    let user_repo = UserRepo::new(Arc::new(state.pool.clone()));
     let user = user_repo.get_by_id(claims.user_id).await;
     match user {
         Ok(Some(user)) => {

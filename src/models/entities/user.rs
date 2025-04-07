@@ -1,16 +1,44 @@
 use serde::{Deserialize, Serialize};
+use sqlx::Type;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
-use sqlx::Type;
 #[derive(Debug, Serialize, Deserialize, Type, PartialEq, ToSchema)]
-#[sqlx(type_name = "user_status")] // matches the PostgreSQL type name
-#[sqlx(rename_all = "lowercase")] // ensures enum variants match DB values
+#[sqlx(type_name = "varchar", rename_all = "lowercase")]
 pub enum UserStatus {
     Active,
     Inactive,
     Suspended,
     Pending,
+}
+
+impl UserStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            UserStatus::Active => "active",
+            UserStatus::Inactive => "inactive",
+            UserStatus::Suspended => "suspended",
+            UserStatus::Pending => "pending",
+        }
+    }
+}
+
+impl From<String> for UserStatus {
+    fn from(s: String) -> Self {
+        match s.to_lowercase().as_str() {
+            "active" => UserStatus::Active,
+            "inactive" => UserStatus::Inactive,
+            "suspended" => UserStatus::Suspended,
+            "pending" => UserStatus::Pending,
+            _ => UserStatus::Inactive,
+        }
+    }
+}
+
+impl ToString for UserStatus {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
