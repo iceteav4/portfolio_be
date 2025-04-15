@@ -38,7 +38,7 @@ pub struct CryptoAsset {
     pub source: CryptoSource,
     pub symbol: String,
     pub name: String,
-    pub image: Option<AssetImage>,
+    pub image: AssetImage,
     pub platform_contract_map: HashMap<String, String>,
 }
 
@@ -67,8 +67,8 @@ impl Asset for CryptoAsset {
         &self.name
     }
 
-    fn image(&self) -> Option<&AssetImage> {
-        self.image.as_ref()
+    fn image(&self) -> &AssetImage {
+        &self.image
     }
 }
 
@@ -77,13 +77,8 @@ impl CryptoAsset {
         asset_row: AssetRow,
         crypto_row: Option<CryptoAssetRow>,
     ) -> Result<Self, AppError> {
-        let image: Option<AssetImage> = match asset_row.image {
-            Some(v) => Some(serde_json::from_str::<AssetImage>(&v)?),
-            None => None,
-        };
-
         let platform_contract_map: HashMap<String, String> = match crypto_row {
-            Some(v) => v.platform_contract_map,
+            Some(v) => serde_json::from_value(v.platform_contract_map)?,
             None => HashMap::new(),
         };
 
@@ -94,7 +89,7 @@ impl CryptoAsset {
             source: CryptoSource::from(asset_row.source),
             symbol: asset_row.symbol,
             name: asset_row.name,
-            image,
+            image: serde_json::from_value(asset_row.image)?,
             platform_contract_map,
         })
     }

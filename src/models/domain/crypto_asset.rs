@@ -11,5 +11,5 @@ pub struct CreateCryptoAsset {
     pub symbol: String,
     pub name: String,
     pub platform_contract_map: Option<HashMap<String, String>>,
-    pub image: Option<AssetImage>,
+    pub image: AssetImage,
 }

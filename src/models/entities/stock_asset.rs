@@ -11,7 +11,7 @@ pub struct StockAsset {
     pub source: String,
     pub symbol: String,
     pub name: String,
-    pub image: Option<AssetImage>,
+    pub image: AssetImage,
 }
 
 impl Asset for StockAsset {
@@ -39,7 +39,7 @@ impl Asset for StockAsset {
         &self.name
     }
 
-    fn image(&self) -> Option<&AssetImage> {
-        self.image.as_ref()
+    fn image(&self) -> &AssetImage {
+        &self.image
     }
 }

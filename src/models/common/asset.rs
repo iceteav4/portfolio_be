@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use sqlx::Type;
+use sqlx::prelude::FromRow;
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
@@ -17,7 +17,7 @@ impl From<String> for AssetType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Type)]
+#[derive(Debug, Deserialize, Serialize, FromRow)]
 #[sqlx(type_name = "JSONB")]
 pub struct AssetImage {
     pub thumb: Option<String>,
@@ -32,5 +32,5 @@ pub trait Asset {
     fn source(&self) -> &str;
     fn symbol(&self) -> &str;
     fn name(&self) -> &str;
-    fn image(&self) -> Option<&AssetImage>;
+    fn image(&self) -> &AssetImage;
 }

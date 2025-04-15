@@ -1,4 +1,3 @@
-use anyhow::Ok;
 use sqlx::PgPool;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -38,14 +37,13 @@ impl CryptoAssetRepo {
             CryptoSource::CoinGecko.to_string(),
             inp.symbol,
             inp.name,
-            inp.image.map(|v| sqlx::types::Json(v))
+            serde_json::to_value(inp.image)?
         )
         .fetch_one(&mut *tx)
         .await?;
 
         // Convert contract map to JSON Value
-        let contract_json = serde_json::to_value(&inp.platform_contract_map)
-            .map_err(|e| AppError::CoinGeckoError("Invalid contract info".to_string()));
+        let contract_json = serde_json::to_value(&inp.platform_contract_map)?;
         let crypto_asset_row = sqlx::query_as!(
             CryptoAssetRow,
             r#"

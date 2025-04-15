@@ -12,5 +12,5 @@ pub struct AssetRow {
     pub source: String,
     pub symbol: String,
     pub name: String,
-    pub image: Option<String>,
+    pub image: serde_json::Value,
 }
