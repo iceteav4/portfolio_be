@@ -2,12 +2,12 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::models::entities::{currency::Currency, transaction::TxType};
+use crate::models::{common::currency::Currency, entities::transaction::TxType};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTransaction {
     pub portfolio_id: i64,
-    pub asset_id: i64,
+    pub asset_id: String,
     pub fees: Option<Decimal>,
     pub executed_at: OffsetDateTime,
     pub notes: Option<String>,

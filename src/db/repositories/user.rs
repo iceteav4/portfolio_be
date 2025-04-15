@@ -5,6 +5,7 @@ use sqlx::PgPool;
 use crate::models::domain::user::CreateUser;
 use crate::models::entities::user::User;
 use crate::models::entities::user::UserStatus;
+use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]
@@ -17,8 +18,8 @@ impl UserRepo {
         Self { pool }
     }
 
-    pub async fn create_user(&self, inp: CreateUser) -> Result<User, sqlx::Error> {
-        sqlx::query_as!(
+    pub async fn create_user(&self, inp: CreateUser) -> Result<User, AppError> {
+        let entity = sqlx::query_as!(
             User,
             r#"
             INSERT INTO users (id, status, email, hashed_password, name)
@@ -32,11 +33,12 @@ impl UserRepo {
             inp.name,
         )
         .fetch_one(self.pool.as_ref())
-        .await
+        .await?;
+        Ok(entity)
     }
 
-    pub async fn get_by_id(&self, id: i64) -> Result<Option<User>, sqlx::Error> {
-        sqlx::query_as!(
+    pub async fn get_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
+        let entity =sqlx::query_as!(
             User,
             r#"
             SELECT id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
@@ -46,11 +48,12 @@ impl UserRepo {
             id as i64
         )
         .fetch_optional(self.pool.as_ref())
-        .await
+        .await?;
+        Ok(entity)
     }
 
-    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
-        sqlx::query_as!(
+    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
+        let entity =sqlx::query_as!(
             User,
             r#"
             SELECT id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
@@ -60,6 +63,7 @@ impl UserRepo {
             email
         )
         .fetch_optional(self.pool.as_ref())
-        .await
+        .await?;
+        Ok(entity)
     }
 }

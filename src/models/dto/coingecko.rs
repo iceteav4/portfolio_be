@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
+use crate::models::common::asset::AssetImage;
 use serde::{Deserialize, Serialize};
-
-use crate::models::entities::asset::AssetImage;
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CoinDataResponse {

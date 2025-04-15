@@ -2,45 +2,67 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use thiserror::Error;
+use serde_json::Error as SerdeError;
+use sqlx::Error as SqlxError;
+use strum::Display;
+use tracing::error;
 
 use crate::models::dto::api_response::ApiResponse;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Display)]
 pub enum AppError {
-    #[error("Database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-
-    #[error("CoinGeckoError")]
+    SqlError(SqlxError),
+    SerdeError(SerdeError),
     CoinGeckoError(String),
-
-    // #[error("Transaction error: {0}")]
-    // TransactionError(#[from] crate::utils::coingecko_exporter::TransactionError),
-    #[error("Unauthorized")]
     Unauthorized(String),
+    InternalServerError,
+}
+
+impl AppError {
+    pub fn get_status_code_and_error_msg(self) -> (StatusCode, String) {
+        match self {
+            AppError::SqlError(err) => {
+                error!("SQL error: {}", err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error".to_string(),
+                )
+            }
+            AppError::SerdeError(err) => {
+                error!("Serde error: {}", err);
+                (StatusCode::BAD_REQUEST, "Invalid data".to_string())
+            }
+            AppError::CoinGeckoError(msg) => {
+                error!("CoinGecko error: {}", msg);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error".to_string(),
+                )
+            }
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::InternalServerError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                String::from("Internal Server Error"),
+            ),
+        }
+    }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            AppError::DatabaseError(e) => {
-                // Log the detailed error internally
-                tracing::error!("Database error: {:?}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "A database error occurred".to_string(),
-                )
-            }
-            // AppError::TransactionError(e) => {
-            //     tracing::error!("Transaction error: {:?}", e);
-            //     (
-            //         StatusCode::INTERNAL_SERVER_ERROR,
-            //         "Failed to process transaction data".to_string(),
-            //     )
-            // }
-            AppError::CoinGeckoError(msg) => (StatusCode::BAD_REQUEST, msg),
-            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
-        };
+        let (status, error_message) = self.get_status_code_and_error_msg();
         ApiResponse::<()>::error(status, error_message).into_response()
+    }
+}
+
+impl From<SqlxError> for AppError {
+    fn from(err: SqlxError) -> Self {
+        AppError::SqlError(err)
+    }
+}
+
+impl From<SerdeError> for AppError {
+    fn from(value: SerdeError) -> Self {
+        AppError::SerdeError(value)
     }
 }

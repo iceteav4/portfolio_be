@@ -31,7 +31,7 @@ pub async fn get_user_by_id(
             name: user.name,
         }),
         Ok(None) => ApiResponse::error(StatusCode::NOT_FOUND, "User not found"),
-        Err(e) => ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        Err(e) => ApiResponse::error_from_app_error(e),
     }
 }
 
@@ -59,6 +59,6 @@ pub async fn get_user_me(
             });
         }
         Ok(None) => return ApiResponse::error(StatusCode::NOT_FOUND, "User not found"),
-        Err(e) => return ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        Err(e) => return ApiResponse::error_from_app_error(e),
     }
 }

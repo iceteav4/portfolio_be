@@ -3,6 +3,8 @@ use serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 use utoipa::ToSchema;
 
+use crate::utils::error::AppError;
+
 #[derive(Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub message: String,
@@ -46,6 +48,22 @@ where
             data: None,
         }
     }
+
+    pub fn error_from_app_error(app_err: AppError) -> ApiResponse<T> {
+        let (status_code, error_msg) = app_err.get_status_code_and_error_msg();
+        Self {
+            unix_time: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            errors: vec![ErrorResponse {
+                message: error_msg,
+                status_code: status_code.as_u16(),
+            }],
+            data: None,
+        }
+    }
+
     #[allow(dead_code)]
     pub fn errors(errors: Vec<ErrorResponse>) -> ApiResponse<T> {
         Self {

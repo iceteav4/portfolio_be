@@ -18,12 +18,14 @@ scraper = "0.23.1"
 serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.140"
 sqlx = { version = "0.8.3", features = [
-    "runtime-tokio-rustls",
+    "runtime-tokio",
     "postgres",
     "time",
     "rust_decimal",
+    "macros",
+    "json"
 ] }
-thiserror = "2.0.12"
+strum = { version = "0.27.1", features = ["derive"] }
 time = { version = "0.3", features = ["formatting", "parsing", "serde"] }
 tokio = { version = "1.44.0", features = ["full"] }
 tower = "0.5.2"

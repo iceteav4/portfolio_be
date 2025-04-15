@@ -14,12 +14,20 @@ impl Currency {
             Currency::Vnd => "vnd",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Currency> {
-        match s {
-            "usd" => Some(Currency::Usd),
-            "vnd" => Some(Currency::Vnd),
-            _ => None,
+impl ToString for Currency {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
+impl From<String> for Currency {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "usd" => Currency::Usd,
+            "vnd" => Currency::Vnd,
+            _ => Currency::Usd,
         }
     }
 }

@@ -1,15 +1,17 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
-use super::{Asset, AssetImage, AssetType};
+use crate::models::common::asset::{Asset, AssetImage, AssetType};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct StockAsset {
     pub id: String,
+    pub created_at: OffsetDateTime,
     pub asset_type: AssetType,
     pub source: String,
     pub symbol: String,
     pub name: String,
-    pub image: AssetImage,
+    pub image: Option<AssetImage>,
 }
 
 impl Asset for StockAsset {
@@ -17,8 +19,12 @@ impl Asset for StockAsset {
         &self.id
     }
 
+    fn created_at(&self) -> OffsetDateTime {
+        self.created_at
+    }
+
     fn asset_type(&self) -> AssetType {
-        AssetType::Cryptocurrency
+        AssetType::Crypto
     }
 
     fn source(&self) -> &str {
@@ -33,7 +39,7 @@ impl Asset for StockAsset {
         &self.name
     }
 
-    fn image(&self) -> &AssetImage {
-        &self.image
+    fn image(&self) -> Option<&AssetImage> {
+        self.image.as_ref()
     }
 }

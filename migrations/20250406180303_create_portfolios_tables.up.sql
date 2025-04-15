@@ -1,7 +1,7 @@
 -- Add up migration script here
 -- Create assets table to store common asset attributes
 CREATE TABLE assets (
-    id BIGINT PRIMARY KEY,
+    id VARCHAR(50) PRIMARY KEY,
     asset_type VARCHAR(20) NOT NULL,
     source VARCHAR(50) NOT NULL,
     symbol VARCHAR(20) NOT NULL,
@@ -12,14 +12,14 @@ CREATE TABLE assets (
 );
 
 -- Create crypto_assets table extending assets
-CREATE TABLE crypto_assets (
-    asset_id BIGINT PRIMARY KEY REFERENCES assets (id),
-    platform_contract_map JSONB -- Stores platform->contract_address mapping
+CREATE TABLE IF NOT EXISTS crypto_assets (
+    asset_id VARCHAR(50) PRIMARY KEY REFERENCES assets(id),
+    platform_contract_map JSONB NOT NULL DEFAULT '{}'
 );
 
 -- Create stock_assets table extending assets
 CREATE TABLE stock_assets (
-    asset_id BIGINT PRIMARY KEY REFERENCES assets (id)
+    asset_id VARCHAR(50) PRIMARY KEY REFERENCES assets (id)
     -- Add any stock-specific fields here
 );
 
@@ -35,7 +35,7 @@ CREATE TABLE portfolios (
 -- Create portfolio_assets table
 CREATE TABLE portfolio_assets (
     portfolio_id BIGINT NOT NULL REFERENCES portfolios (id),
-    asset_id BIGINT NOT NULL REFERENCES assets (id),
+    asset_id VARCHAR(50) NOT NULL REFERENCES assets (id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (portfolio_id, asset_id)
 );
@@ -44,7 +44,7 @@ CREATE TABLE portfolio_assets (
 CREATE TABLE transactions (
     id BIGINT PRIMARY KEY,
     portfolio_id BIGINT NOT NULL REFERENCES portfolios (id),
-    asset_id BIGINT NOT NULL REFERENCES assets (id),
+    asset_id VARCHAR(50) NOT NULL REFERENCES assets (id),
     tx_type VARCHAR(20) NOT NULL,
     quantity DECIMAL NOT NULL,
     price DECIMAL NOT NULL,

@@ -1,19 +1,9 @@
-use std::sync::Arc;
-
+use crate::{clients::coingecko::CoinGeckoClient, config::Settings, db::postgres::init_pg_pool};
+use anyhow::Error;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use redis::{AsyncCommands, Client, aio::ConnectionManager};
 use sqlx::PgPool;
-
-use crate::{clients::coingecko::CoinGeckoClient, config::Settings, db::postgres::init_pg_pool};
-
-#[derive(Debug, thiserror::Error)]
-pub enum StateError {
-    #[error("Redis error: {0}")]
-    Redis(#[from] redis::RedisError),
-    #[error("Database error: {0}")]
-    Database(String),
-    // Add other error types as needed
-}
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppStateInner {
@@ -26,11 +16,9 @@ pub struct AppStateInner {
 pub type AppState = Arc<AppStateInner>;
 
 impl AppStateInner {
-    pub async fn new(app_settings: &Settings) -> Result<Self, StateError> {
+    pub async fn new(app_settings: &Settings) -> Result<Self, Error> {
         // init pg pool
-        let pg_pool = init_pg_pool(&app_settings.postgres.url)
-            .await
-            .map_err(|e| StateError::Database(e.to_string()))?;
+        let pg_pool = init_pg_pool(&app_settings.postgres.url).await?;
         let redis = Client::open(app_settings.redis.url.clone())?;
         let redis_conn = ConnectionManager::new(redis).await?;
         let coingecko_client = CoinGeckoClient::new(app_settings.coingecko.api_key.clone());
@@ -42,16 +30,10 @@ impl AppStateInner {
         })
     }
 
-    pub async fn health_check(&self) -> Result<(), StateError> {
-        self.pool
-            .acquire()
-            .await
-            .map_err(|e| StateError::Database(e.to_string()))?;
+    pub async fn health_check(&self) -> Result<(), Error> {
+        self.pool.acquire().await?;
         let mut redis_conn = self.redis_conn.clone();
-        redis_conn
-            .ping::<String>()
-            .await
-            .map_err(|e| StateError::Redis(e))?;
+        redis_conn.ping::<String>().await?;
         Ok(())
     }
 
@@ -63,7 +45,7 @@ impl AppStateInner {
         DecodingKey::from_secret(self.secret_key.as_bytes())
     }
 
-    pub async fn shutdown(&self) -> Result<(), StateError> {
+    pub async fn shutdown(&self) -> Result<(), Error> {
         // Close database connections
         self.pool.close().await;
 
