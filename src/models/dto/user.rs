@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::models::entities::user::UserStatus;
+use crate::utils::datetime::serialize_datetime;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserResponse {
@@ -16,5 +18,6 @@ pub struct UserMeResponse {
     pub email: String,
     pub phone_number: Option<String>,
     pub name: Option<String>,
-    pub created_at: String,
+    #[serde(serialize_with = "serialize_datetime")]
+    pub created_at: OffsetDateTime,
 }

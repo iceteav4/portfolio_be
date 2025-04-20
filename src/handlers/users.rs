@@ -8,7 +8,6 @@ use axum::{
     http::StatusCode,
 };
 use std::sync::Arc;
-use time::format_description::well_known::Rfc3339;
 
 #[utoipa::path(
     get,
@@ -55,7 +54,7 @@ pub async fn get_user_me(
                 email: user.email,
                 phone_number: user.phone_number,
                 name: user.name,
-                created_at: user.created_at.format(&Rfc3339).unwrap(),
+                created_at: user.created_at,
             });
         }
         Ok(None) => return ApiResponse::error(StatusCode::NOT_FOUND, "User not found"),

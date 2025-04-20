@@ -5,6 +5,7 @@ use axum::{
 use serde_json::Error as SerdeError;
 use sqlx::Error as SqlxError;
 use strum::Display;
+use time::error::{Format as TimeFormatError, Parse as TimeParseError};
 use tracing::error;
 
 use crate::models::dto::api_response::ApiResponse;
@@ -16,6 +17,8 @@ pub enum AppError {
     CoinGeckoError(String),
     Unauthorized(String),
     InternalServerError,
+    TimeParseError(TimeParseError),
+    TimeFormatError(TimeFormatError),
 }
 
 impl AppError {
@@ -44,6 +47,14 @@ impl AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 String::from("Internal Server Error"),
             ),
+            AppError::TimeParseError(err) => {
+                error!("Time parse error: {}", err);
+                (StatusCode::BAD_REQUEST, "Invalid datetime format".to_string())
+            },
+            AppError::TimeFormatError(err) => {
+                error!("Time format error: {}", err);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Error formatting datetime".to_string())
+            },
         }
     }
 }
@@ -64,5 +75,17 @@ impl From<SqlxError> for AppError {
 impl From<SerdeError> for AppError {
     fn from(value: SerdeError) -> Self {
         AppError::SerdeError(value)
+    }
+}
+
+impl From<TimeParseError> for AppError {
+    fn from(err: TimeParseError) -> Self {
+        AppError::TimeParseError(err)
+    }
+}
+
+impl From<TimeFormatError> for AppError {
+    fn from(err: TimeFormatError) -> Self {
+        AppError::TimeFormatError(err)
     }
 }
