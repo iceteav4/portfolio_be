@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::PgPool;
 
 use crate::models::database::portfolio::PortfolioRow;
@@ -9,11 +7,11 @@ use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 pub struct PortfolioRepo {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl PortfolioRepo {
-    pub fn new(pool: Arc<PgPool>) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
     pub async fn create_portfolio(&self, inp: CreatePortfolio) -> Result<Portfolio, AppError> {
@@ -28,7 +26,7 @@ impl PortfolioRepo {
             inp.owner_id,
             inp.name
         )
-        .fetch_one(self.pool.as_ref())
+        .fetch_one(&self.pool)
         .await?;
 
         Ok(Portfolio::new(row))

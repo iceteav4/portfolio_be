@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::PgPool;
 
 use crate::models::domain::user::CreateUser;
@@ -10,11 +8,11 @@ use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]
 pub struct UserRepo {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl UserRepo {
-    pub fn new(pool: Arc<PgPool>) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
@@ -32,7 +30,7 @@ impl UserRepo {
             inp.hashed_password,
             inp.name,
         )
-        .fetch_one(self.pool.as_ref())
+        .fetch_one(&self.pool)
         .await?;
         Ok(entity)
     }
@@ -47,7 +45,7 @@ impl UserRepo {
             "#,
             id as i64
         )
-        .fetch_optional(self.pool.as_ref())
+        .fetch_optional(&self.pool)
         .await?;
         Ok(entity)
     }
@@ -62,7 +60,7 @@ impl UserRepo {
             "#,
             email
         )
-        .fetch_optional(self.pool.as_ref())
+        .fetch_optional(&self.pool)
         .await?;
         Ok(entity)
     }

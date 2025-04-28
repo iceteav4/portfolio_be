@@ -1,3 +1,8 @@
+use argon2::{self, password_hash::rand_core};
+use axum::{Json, extract::State, http::StatusCode};
+use time::{Duration, OffsetDateTime};
+use tracing::info;
+
 use crate::{
     db::repositories::user::UserRepo,
     middleware::auth::create_token,
@@ -9,10 +14,7 @@ use crate::{
     },
     state::AppState,
 };
-use argon2::{self, password_hash::rand_core};
-use axum::{Json, extract::State, http::StatusCode};
-use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
+
 const BEARER_TOKEN_EXPIRATION: Duration = Duration::days(365);
 
 fn hash_password(password: String) -> Result<String, anyhow::Error> {
@@ -49,7 +51,8 @@ pub async fn login_with_password(
     Json(req): Json<LoginWithPasswordRequest>,
 ) -> ApiResponse<AuthResponse> {
     // Validate credentials (implement your own logic here)
-    let user_repo = UserRepo::new(Arc::new(state.pool.clone()));
+    info!("Login with password for email: {}", req.email);
+    let user_repo = UserRepo::new(state.pool.clone());
     let user = match user_repo.get_by_email(&req.email).await {
         Ok(u) => u,
         Err(e) => {
@@ -92,7 +95,7 @@ pub async fn signup(
     State(state): State<AppState>,
     Json(req): Json<SignUpWithPasswordRequest>,
 ) -> ApiResponse<AuthResponse> {
-    let user_repo = UserRepo::new(Arc::new(state.pool.clone()));
+    let user_repo = UserRepo::new(state.pool.clone());
     match user_repo.get_by_email(&req.email).await {
         Ok(u) => {
             if u.is_some() {

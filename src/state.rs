@@ -1,16 +1,18 @@
-use crate::{clients::coingecko::CoinGeckoClient, config::Settings, db::postgres::init_pg_pool};
+use std::sync::Arc;
+
 use anyhow::Error;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use redis::{AsyncCommands, Client, aio::ConnectionManager};
 use sqlx::PgPool;
-use std::sync::Arc;
+
+use crate::{clients::app_client::AppClients, config::Settings, db::postgres::init_pg_pool};
 
 #[derive(Clone)]
 pub struct AppStateInner {
     pub pool: PgPool,
     secret_key: String,
     pub redis_conn: ConnectionManager,
-    pub coingecko_client: CoinGeckoClient,
+    pub clients: AppClients,
 }
 
 pub type AppState = Arc<AppStateInner>;
@@ -21,12 +23,12 @@ impl AppStateInner {
         let pg_pool = init_pg_pool(&app_settings.postgres.url).await?;
         let redis = Client::open(app_settings.redis.url.clone())?;
         let redis_conn = ConnectionManager::new(redis).await?;
-        let coingecko_client = CoinGeckoClient::new(app_settings.coingecko.api_key.clone());
+        let clients = AppClients::new(&app_settings.clients);
         Ok(Self {
             pool: pg_pool,
             secret_key: app_settings.server.secret_key.clone(),
             redis_conn,
-            coingecko_client,
+            clients,
         })
     }
 

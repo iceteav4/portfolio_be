@@ -1,5 +1,4 @@
 use sqlx::PgPool;
-use std::sync::Arc;
 use time::OffsetDateTime;
 
 use crate::models::common::asset::AssetType;
@@ -11,11 +10,11 @@ use crate::models::{
 use crate::utils::error::AppError;
 
 pub struct CryptoAssetRepo {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl CryptoAssetRepo {
-    pub fn new(pool: Arc<PgPool>) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
     pub async fn create_crypto_asset(

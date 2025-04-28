@@ -5,6 +5,12 @@ use serde::Deserialize;
 pub struct Server {
     pub port: u16,
     pub secret_key: String,
+    pub allow_origins: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Logging {
+    pub level: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -18,16 +24,22 @@ pub struct Redis {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Coingecko {
+pub struct CoingeckoConfig {
     pub api_key: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClientsConfig {
+    pub coingecko: CoingeckoConfig,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     pub server: Server,
+    pub logging: Logging,
     pub postgres: Postgres,
     pub redis: Redis,
-    pub coingecko: Coingecko,
+    pub clients: ClientsConfig,
 }
 
 pub fn load_config() -> Result<Settings, config::ConfigError> {

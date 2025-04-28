@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod coingecko;
 pub mod crypto_asset;
 pub mod portfolio;
 pub mod transaction;

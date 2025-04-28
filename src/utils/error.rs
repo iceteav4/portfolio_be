@@ -15,6 +15,7 @@ pub enum AppError {
     SqlError(SqlxError),
     SerdeError(SerdeError),
     CoinGeckoError(String),
+    HttpError(String),
     Unauthorized(String),
     InternalServerError,
     TimeParseError(TimeParseError),
@@ -42,6 +43,13 @@ impl AppError {
                     "Internal Server Error".to_string(),
                 )
             }
+            AppError::HttpError(msg) => {
+                error!("HTTP error: {}", msg);
+                (
+                    StatusCode::BAD_GATEWAY,
+                    "Error communicating with external service".to_string(),
+                )
+            }
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             AppError::InternalServerError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -49,12 +57,18 @@ impl AppError {
             ),
             AppError::TimeParseError(err) => {
                 error!("Time parse error: {}", err);
-                (StatusCode::BAD_REQUEST, "Invalid datetime format".to_string())
-            },
+                (
+                    StatusCode::BAD_REQUEST,
+                    "Invalid datetime format".to_string(),
+                )
+            }
             AppError::TimeFormatError(err) => {
                 error!("Time format error: {}", err);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Error formatting datetime".to_string())
-            },
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error formatting datetime".to_string(),
+                )
+            }
         }
     }
 }
@@ -87,5 +101,11 @@ impl From<TimeParseError> for AppError {
 impl From<TimeFormatError> for AppError {
     fn from(err: TimeFormatError) -> Self {
         AppError::TimeFormatError(err)
+    }
+}
+
+impl From<reqwest::Error> for AppError {
+    fn from(err: reqwest::Error) -> Self {
+        AppError::HttpError(err.to_string())
     }
 }

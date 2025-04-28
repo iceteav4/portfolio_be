@@ -7,7 +7,6 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use std::sync::Arc;
 
 #[utoipa::path(
     get,
@@ -21,9 +20,7 @@ pub async fn get_user_by_id(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> ApiResponse<UserResponse> {
-    let user = UserRepo::new(Arc::new(state.pool.clone()))
-        .get_by_id(id)
-        .await;
+    let user = UserRepo::new(state.pool.clone()).get_by_id(id).await;
     match user {
         Ok(Some(user)) => ApiResponse::success(UserResponse {
             id: user.id,
@@ -44,7 +41,7 @@ pub async fn get_user_me(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> ApiResponse<UserMeResponse> {
-    let user_repo = UserRepo::new(Arc::new(state.pool.clone()));
+    let user_repo = UserRepo::new(state.pool.clone());
     let user = user_repo.get_by_id(claims.user_id).await;
     match user {
         Ok(Some(user)) => {

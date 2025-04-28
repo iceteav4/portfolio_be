@@ -1,16 +1,16 @@
+use sqlx::PgPool;
+
 use crate::models::domain::transaction::CreateTransaction;
 use crate::models::entities::transaction::Transaction;
 use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
-use sqlx::PgPool;
-use std::sync::Arc;
 
 pub struct TransactionRepo {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl TransactionRepo {
-    pub fn new(pool: Arc<PgPool>) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
@@ -34,7 +34,7 @@ impl TransactionRepo {
             inp.executed_at,
             inp.notes,
         )
-        .fetch_one(self.pool.as_ref())
+        .fetch_one(&self.pool)
         .await?;
 
         Ok(entity)

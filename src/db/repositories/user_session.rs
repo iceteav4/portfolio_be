@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::PgPool;
 use time::OffsetDateTime;
 
@@ -10,11 +8,11 @@ use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
 #[derive(Debug)]
 pub struct UserSessionRepo {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl UserSessionRepo {
-    pub fn new(pool: Arc<PgPool>) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
@@ -35,7 +33,7 @@ impl UserSessionRepo {
             OffsetDateTime::now_utc(),
             session.expires_at
         )
-        .fetch_one(self.pool.as_ref())
+        .fetch_one(&self.pool)
         .await?;
         Ok(entity)
     }
@@ -50,7 +48,7 @@ impl UserSessionRepo {
             "#,
             id as i64
         )
-        .fetch_optional(self.pool.as_ref())
+        .fetch_optional(&self.pool)
         .await?;
         Ok(entity)
     }

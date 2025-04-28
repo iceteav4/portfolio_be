@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::models::domain::auth::Claims;
 use crate::state::AppState;
 use crate::{
@@ -29,7 +27,7 @@ pub async fn create_token(
     session: CreateUserSession,
     state: &AppState,
 ) -> Result<String, AppError> {
-    let repo = UserSessionRepo::new(Arc::new(state.pool.clone()));
+    let repo = UserSessionRepo::new(state.pool.clone());
     let new_session = repo.create_user_session(session).await?;
 
     // Ensure the claims are properly formatted
@@ -57,7 +55,8 @@ pub async fn create_token(
 
     Ok(token)
 }
-async fn is_session_valid(session_id: i64, pool: Arc<PgPool>) -> Result<bool, AppError> {
+
+async fn is_session_valid(session_id: i64, pool: PgPool) -> Result<bool, AppError> {
     let session_repo = UserSessionRepo::new(pool);
     let session = session_repo.get_by_id(session_id).await?;
     match session {
@@ -85,8 +84,6 @@ impl FromRequestParts<AppState> for Claims {
                 AppError::Unauthorized("Missing or invalid authorization header".to_string())
             })?;
 
-        let pool = Arc::new(state.pool.clone());
-
         // Try to get claims from cache first
         let token = bearer.token();
         let cache_key = format!("token:{}", token);
@@ -96,7 +93,7 @@ impl FromRequestParts<AppState> for Claims {
 
         if let Ok(cached_result) = redis_conn.get::<_, String>(&cache_key).await {
             if let Ok(claims) = serde_json::from_str::<Claims>(&cached_result) {
-                if is_session_valid(claims.session_id, pool.clone()).await? {
+                if is_session_valid(claims.session_id, state.pool.clone()).await? {
                     return Ok(claims);
                 }
             }
@@ -109,7 +106,7 @@ impl FromRequestParts<AppState> for Claims {
 
         let token_data = decode::<Claims>(token, &state.decoding_key(), &validation)
             .map_err(|e| AppError::Unauthorized(e.to_string()))?;
-        if !is_session_valid(token_data.claims.session_id, pool.clone()).await? {
+        if !is_session_valid(token_data.claims.session_id, state.pool.clone()).await? {
             return Err(AppError::Unauthorized("Session not valid".to_string()));
         }
 
@@ -129,13 +126,13 @@ pub async fn require_authentication(
     req: Request<Body>,
     next: Next,
 ) -> Result<Response, (StatusCode, String)> {
-    let mut parts = req.into_parts().0;
+    let (mut parts, body) = req.into_parts();
 
     // Try to extract and validate the claims
     match Claims::from_request_parts(&mut parts, &state).await {
         Ok(claims) => {
             // Reconstruct the request and add claims to extensions
-            let mut req = Request::from_parts(parts, Body::empty());
+            let mut req = Request::from_parts(parts, body);
             req.extensions_mut().insert(claims);
             Ok(next.run(req).await)
         }
