@@ -16,15 +16,15 @@ pub struct Portfolio {
 }
 
 impl Portfolio {
-    pub fn new(row: PortfolioRow) -> Self {
-        Self {
+    pub fn from_row(row: Option<PortfolioRow>) -> Option<Self> {
+        row.map(|row| Self {
             id: row.id,
             owner_id: row.owner_id,
             name: row.name,
             created_at: row.created_at,
             updated_at: row.updated_at,
             positions: HashMap::new(),
-        }
+        })
     }
 
     pub fn total_value(&self) -> Decimal {

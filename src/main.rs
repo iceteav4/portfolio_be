@@ -18,38 +18,13 @@ use utoipa_swagger_ui::SwaggerUi;
 mod clients;
 mod config;
 mod db;
+mod docs;
 mod handlers;
 mod middleware;
 mod models;
 mod routes;
 mod state;
 mod utils;
-
-// Generate API documentation
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        // List your handler functions here
-        handlers::health::health_check,
-        handlers::auth::login_with_password,
-        handlers::users::get_user_by_id,
-        handlers::users::get_user_me,
-    ),
-    components(
-        // List your schema components here
-        schemas(
-            models::dto::auth::LoginWithPasswordRequest,
-            models::dto::auth::AuthResponse,
-            models::dto::user::UserResponse,
-        )
-    ),
-    tags(
-        (name = "health", description = "Health check endpoints"),
-        (name = "auth", description = "Authentication endpoints"),
-        (name = "users", description = "User endpoints")
-    )
-)]
-struct ApiDoc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -101,7 +76,10 @@ async fn main() -> Result<()> {
         .nest("/health", routes::health::create_router())
         .nest("/auth", routes::auth::create_router())
         .layer(cors_layer)
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", docs::api::ApiDoc::openapi()),
+        );
 
     let protected_routes = Router::new()
         .nest("/api", routes::api::create_router())
@@ -117,7 +95,6 @@ async fn main() -> Result<()> {
         .with_state(state.clone())
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .layer(axum::middleware::from_fn(

@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::models::domain::transaction::CreateTransaction;
+use crate::models::domain::transaction::{CreateMultiTransaction, CreateTransaction};
 use crate::models::entities::transaction::Transaction;
 use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
@@ -30,7 +30,7 @@ impl TransactionRepo {
             inp.quantity,
             inp.price,
             inp.fees,
-            inp.currency.as_str(),
+            inp.currency.as_ref(),
             inp.executed_at,
             inp.notes,
         )
@@ -38,5 +38,38 @@ impl TransactionRepo {
         .await?;
 
         Ok(entity)
+    }
+
+    pub async fn create_multi_transaction(
+        &self,
+        inp: CreateMultiTransaction,
+    ) -> Result<u64, AppError> {
+        if inp.items.is_empty() {
+            return Ok(0);
+        }
+
+        let portfolio_id = inp.portfolio_id;
+        let asset_id = inp.asset_id.clone();
+
+        let mut query_builder = sqlx::QueryBuilder::new(
+            "INSERT INTO transactions (id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes) ",
+        );
+
+        query_builder.push_values(inp.items, |mut b, item| {
+            b.push_bind(SNOWFLAKE_GENERATOR.generate().unwrap())
+                .push_bind(portfolio_id)
+                .push_bind(&asset_id)
+                .push_bind(item.tx_type.to_string())
+                .push_bind(item.quantity)
+                .push_bind(item.price)
+                .push_bind(item.fees)
+                .push_bind(item.currency.as_ref())
+                .push_bind(item.executed_at)
+                .push_bind(item.notes);
+        });
+
+        let result = query_builder.build().execute(&self.pool).await?;
+
+        Ok(result.rows_affected())
     }
 }

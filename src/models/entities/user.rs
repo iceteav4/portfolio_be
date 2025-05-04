@@ -3,8 +3,9 @@ use sqlx::Type;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
+use crate::models::database::user::UserRow;
+
 #[derive(Debug, Serialize, Deserialize, Type, PartialEq, ToSchema)]
-#[sqlx(type_name = "varchar", rename_all = "lowercase")]
 pub enum UserStatus {
     Active,
     Inactive,
@@ -52,4 +53,19 @@ pub struct User {
     pub name: Option<String>,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
+}
+
+impl User {
+    pub fn from_row(row: Option<UserRow>) -> Option<Self> {
+        row.map(|row| Self {
+            id: row.id,
+            status: UserStatus::from(row.status),
+            email: row.email,
+            phone_number: row.phone_number,
+            hashed_password: row.hashed_password,
+            name: row.name,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+    }
 }

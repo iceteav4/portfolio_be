@@ -1,5 +1,6 @@
 use sqlx::PgPool;
 use time::OffsetDateTime;
+use tracing::info;
 
 use crate::models::common::asset::AssetType;
 use crate::models::database::{asset::AssetRow, crypto_asset::CryptoAssetRow};
@@ -46,18 +47,53 @@ impl CryptoAssetRepo {
         let crypto_asset_row = sqlx::query_as!(
             CryptoAssetRow,
             r#"
-                INSERT INTO crypto_assets (asset_id, platform_contract_map)
-                VALUES ($1, $2)
-                RETURNING asset_id, platform_contract_map
+                INSERT INTO crypto_assets (asset_id, external_id, platform_contract_map)
+                VALUES ($1, $2, $3)
+                RETURNING asset_id, external_id, platform_contract_map
             "#,
             asset_row.id,
+            inp.external_id,
             contract_json
         )
         .fetch_one(&mut *tx)
         .await?;
 
         tx.commit().await?;
-        let crypto_asset = CryptoAsset::from_row(asset_row, Some(crypto_asset_row))?;
+        let crypto_asset = CryptoAsset::from_row(asset_row, crypto_asset_row)?;
         Ok(crypto_asset)
+    }
+
+    pub async fn get_by_id(&self, asset_id: &String) -> Result<Option<CryptoAsset>, AppError> {
+        let asset_row = sqlx::query_as!(
+            AssetRow,
+            r#"
+                SELECT id, created_at, asset_type, source, symbol, name, image
+                FROM assets
+                WHERE id = $1
+            "#,
+            asset_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let crypto_asset_row = sqlx::query_as!(
+            CryptoAssetRow,
+            r#"
+                SELECT asset_id, external_id, platform_contract_map
+                FROM crypto_assets
+                WHERE asset_id = $1
+            "#,
+            asset_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        match (asset_row, crypto_asset_row) {
+            (Some(asset_row), Some(crypto_asset_row)) => {
+                let crypto_asset = CryptoAsset::from_row(asset_row, crypto_asset_row)?;
+                Ok(Some(crypto_asset))
+            }
+            _ => Ok(None),
+        }
     }
 }

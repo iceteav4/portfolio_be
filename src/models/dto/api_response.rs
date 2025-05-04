@@ -24,7 +24,7 @@ where
 {
     #[serde(serialize_with = "serialize_datetime")]
     pub server_time: OffsetDateTime,
-    pub errors: Vec<ErrorResponse>,
+    pub errors: Option<Vec<ErrorResponse>>,
     pub data: Option<T>,
 }
 
@@ -35,7 +35,7 @@ where
     pub fn success(data: T) -> Self {
         Self {
             server_time: OffsetDateTime::now_utc(),
-            errors: vec![],
+            errors: None,
             data: Some(data),
         }
     }
@@ -43,7 +43,7 @@ where
     pub fn general_response() -> ApiResponse<GeneralResponse> {
         ApiResponse {
             server_time: OffsetDateTime::now_utc(),
-            errors: vec![],
+            errors: None,
             data: Some(GeneralResponse { success: true }),
         }
     }
@@ -51,22 +51,10 @@ where
     pub fn error(status_code: StatusCode, message: impl Into<String>) -> ApiResponse<T> {
         Self {
             server_time: OffsetDateTime::now_utc(),
-            errors: vec![ErrorResponse {
+            errors: Some(vec![ErrorResponse {
                 message: message.into(),
                 status_code: status_code.as_u16(),
-            }],
-            data: None,
-        }
-    }
-
-    pub fn error_from_app_error(app_err: AppError) -> ApiResponse<T> {
-        let (status_code, error_msg) = app_err.get_status_code_and_error_msg();
-        Self {
-            server_time: OffsetDateTime::now_utc(),
-            errors: vec![ErrorResponse {
-                message: error_msg,
-                status_code: status_code.as_u16(),
-            }],
+            }]),
             data: None,
         }
     }
@@ -75,15 +63,8 @@ where
     pub fn errors(errors: Vec<ErrorResponse>) -> ApiResponse<T> {
         Self {
             server_time: OffsetDateTime::now_utc(),
-            errors,
+            errors: Some(errors),
             data: None,
-        }
-    }
-
-    pub fn from_result(result: Result<T, AppError>) -> Self {
-        match result {
-            Ok(data) => Self::success(data),
-            Err(err) => Self::error_from_app_error(err),
         }
     }
 }
@@ -102,6 +83,14 @@ where
     T: Serialize,
 {
     fn from(err: AppError) -> Self {
-        Self::error_from_app_error(err)
+        let (status_code, error_msg) = err.get_status_code_and_error_msg();
+        Self {
+            server_time: OffsetDateTime::now_utc(),
+            errors: Some(vec![ErrorResponse {
+                message: error_msg,
+                status_code: status_code.as_u16(),
+            }]),
+            data: None,
+        }
     }
 }

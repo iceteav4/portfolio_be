@@ -1,5 +1,6 @@
 use sqlx::PgPool;
 
+use crate::models::database::user::UserRow;
 use crate::models::domain::user::CreateUser;
 use crate::models::entities::user::User;
 use crate::models::entities::user::UserStatus;
@@ -17,8 +18,8 @@ impl UserRepo {
     }
 
     pub async fn create_user(&self, inp: CreateUser) -> Result<User, AppError> {
-        let entity = sqlx::query_as!(
-            User,
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
             INSERT INTO users (id, status, email, hashed_password, name)
             VALUES ($1, $2, $3, $4, $5)
@@ -32,14 +33,15 @@ impl UserRepo {
         )
         .fetch_one(&self.pool)
         .await?;
-        Ok(entity)
+
+        User::from_row(Some(row)).ok_or_else(|| AppError::InternalServerError)
     }
 
     pub async fn get_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
-        let entity =sqlx::query_as!(
-            User,
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
-            SELECT id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
+            SELECT id, email, phone_number, hashed_password, name, status, created_at, updated_at
             FROM users
             WHERE id = $1
             "#,
@@ -47,14 +49,14 @@ impl UserRepo {
         )
         .fetch_optional(&self.pool)
         .await?;
-        Ok(entity)
+        Ok(User::from_row(row))
     }
 
     pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
-        let entity =sqlx::query_as!(
-            User,
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
-            SELECT id, email, phone_number, hashed_password, name, status as "status!: UserStatus", created_at, updated_at
+            SELECT id, email, phone_number, hashed_password, name, status, created_at, updated_at
             FROM users
             WHERE email = $1
             "#,
@@ -62,6 +64,6 @@ impl UserRepo {
         )
         .fetch_optional(&self.pool)
         .await?;
-        Ok(entity)
+        Ok(User::from_row(row))
     }
 }

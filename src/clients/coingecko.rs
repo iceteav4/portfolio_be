@@ -1,6 +1,7 @@
 use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue};
 use scraper::{Html, Selector};
+use tracing::info;
 
 use crate::models::domain::coingecko::RawTransaction;
 use crate::{models::dto::coingecko::CoinDataResponse, utils::error::AppError};
@@ -37,7 +38,10 @@ impl CoinGeckoClient {
         Ok(data)
     }
 
-    pub fn parse_html_contents(&self, contents: &String) -> Result<Vec<RawTransaction>, AppError> {
+    pub fn parse_html_contents(
+        &self,
+        contents: &String,
+    ) -> Result<(String, Vec<RawTransaction>), AppError> {
         let doc = Html::parse_document(contents);
         let table_sel = Selector::parse(r"body > div.container > main > div:nth-child(3) > div:nth-child(3) > div.tw-overflow-x-auto.\32 lg\:tw-overflow-x-visible.\32 lg\:tw-flex.\32 lg\:tw-justify-center > table > tbody").unwrap();
         let table = doc.select(&table_sel).next().expect("Table not found");
@@ -57,7 +61,20 @@ impl CoinGeckoClient {
                 }
             }
         }
-        println!("Found {} transactions", transactions.len());
-        Ok(transactions)
+        let coin_slug_sel =
+            Selector::parse(r"body > div:nth-child(3) > main:nth-child(2) > div:nth-child(3)")
+                .unwrap();
+        let coin_slug = doc
+            .select(&coin_slug_sel)
+            .next()
+            .expect("Coin slug not found");
+        let coin_id = coin_slug.value().attr("data-coin-slug");
+        if coin_id.is_none() {
+            info!("Coin ID is null");
+            return Err(AppError::CoinGeckoError(
+                "Got error when parsing data from HTML import".to_string(),
+            ));
+        }
+        Ok((coin_id.unwrap().to_string(), transactions))
     }
 }

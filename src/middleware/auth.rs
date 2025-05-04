@@ -1,9 +1,3 @@
-use crate::models::domain::auth::Claims;
-use crate::state::AppState;
-use crate::{
-    db::repositories::user_session::UserSessionRepo,
-    models::domain::user_session::CreateUserSession, utils::error::AppError,
-};
 use axum::{
     RequestPartsExt,
     body::Body,
@@ -21,6 +15,13 @@ use jsonwebtoken::{Header, Validation, decode, encode};
 use redis::AsyncCommands;
 use sqlx::PgPool;
 use time::OffsetDateTime;
+
+use crate::models::domain::auth::Claims;
+use crate::state::AppState;
+use crate::{
+    db::repositories::user_session::UserSessionRepo,
+    models::domain::user_session::CreateUserSession, utils::error::AppError,
+};
 
 // Convert UserSession to JWT token
 pub async fn create_token(

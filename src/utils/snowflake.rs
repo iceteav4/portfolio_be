@@ -63,7 +63,6 @@ impl SnowflakeGenerator {
         (hasher.finish() % (MAX_NODE_ID as u64 + 1)) as i64
     }
 
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
     pub fn generate(&self) -> Result<i64, &'static str> {
         let current_timestamp = Self::timestamp();
         let last_timestamp = self.last_timestamp.load(Ordering::Acquire);
@@ -95,11 +94,18 @@ impl SnowflakeGenerator {
         // Use the appropriate timestamp (either current or the one from wait_next_millis)
         let timestamp_to_use = self.last_timestamp.load(Ordering::Acquire);
 
-        // Compose the ID and ensure it's positive by using abs()
-        Ok(((((timestamp_to_use - EPOCH) << TIMESTAMP_SHIFT)
-            | (self.node_id << NODE_ID_SHIFT)
-            | sequence) as i64)
-            .abs())
+        // Compose the ID without using abs()
+        // Ensure we only use 63 bits (leaving the sign bit as 0)
+        let timestamp_bits = ((timestamp_to_use - EPOCH) & ((1 << 41) - 1)) << TIMESTAMP_SHIFT;
+        let node_bits = (self.node_id & ((1 << NODE_ID_BITS) - 1)) << NODE_ID_SHIFT;
+        let sequence_bits = sequence & ((1 << SEQUENCE_BITS) - 1);
+
+        let id = timestamp_bits | node_bits | sequence_bits;
+
+        // The ID will always be positive because we:
+        // 1. Use only 63 bits total (41 + 10 + 12 = 63)
+        // 2. Leave the most significant bit (sign bit) as 0
+        Ok(id)
     }
 
     #[allow(clippy::cast_possible_truncation)]

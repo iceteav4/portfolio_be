@@ -16,3 +16,21 @@ pub struct CreateTransaction {
     pub price: Decimal,
     pub tx_type: TxType,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BaseTransactionInfo {
+    pub fees: Option<Decimal>,
+    pub executed_at: OffsetDateTime,
+    pub notes: Option<String>,
+    pub currency: Currency,
+    pub quantity: Decimal,
+    pub price: Decimal,
+    pub tx_type: TxType,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateMultiTransaction {
+    pub portfolio_id: i64,
+    pub asset_id: String,
+    pub items: Vec<BaseTransactionInfo>,
+}

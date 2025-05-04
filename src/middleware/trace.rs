@@ -1,9 +1,11 @@
 use axum::{
+    body::Body,
     http::{HeaderMap, HeaderValue, Request},
     middleware::Next,
     response::Response,
 };
-use tracing::info_span;
+use tokio;
+use tracing::{Instrument, info_span};
 use uuid::Uuid;
 
 const X_REQUEST_ID: &str = "x-request-id";
@@ -28,32 +30,28 @@ impl RequestId {
     }
 }
 
-pub async fn trace_request_id(request: Request<axum::body::Body>, next: Next) -> Response {
-    let request_id = request
-        .headers()
-        .get(X_REQUEST_ID)
-        .and_then(|h| h.to_str().ok())
-        .map(|s| RequestId(s.to_string()))
-        .unwrap_or_else(RequestId::new);
+pub async fn trace_request_id(mut request: Request<Body>, next: Next) -> Response {
+    let request_id = RequestId::from_header(request.headers()).unwrap_or_else(RequestId::new);
 
-    // Create a span with the request_id
+    // Attach request_id to tracing span
+    // let span = info_span!("", request_id = %request_id.as_str());
     let span = info_span!("", "{}", request_id.as_str());
+    // let _guard = span.enter();
 
-    let mut response = {
-        let _guard = span.enter();
+    // Store request_id in extensions for handlers
+    request.extensions_mut().insert(request_id.clone());
 
-        // Add request_id to request extensions
-        let mut request = request;
-        request.extensions_mut().insert(request_id.clone());
+    async {
+        let mut response = next.run(request).await;
 
-        next.run(request).await
-    };
+        // Add request_id to response headers
+        response.headers_mut().insert(
+            X_REQUEST_ID,
+            HeaderValue::from_str(request_id.as_str()).unwrap(),
+        );
 
-    // Add the request ID to response headers
-    response.headers_mut().insert(
-        X_REQUEST_ID,
-        HeaderValue::from_str(request_id.as_str()).unwrap(),
-    );
-
-    response
+        response
+    }
+    .instrument(span)
+    .await
 }

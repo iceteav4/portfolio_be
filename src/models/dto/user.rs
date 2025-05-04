@@ -7,13 +7,13 @@ use crate::utils::datetime::serialize_datetime;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserResponse {
-    pub id: i64,
+    pub id: String,
     pub name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserMeResponse {
-    pub id: i64,
+    pub id: String,
     pub status: UserStatus,
     pub email: String,
     pub phone_number: Option<String>,

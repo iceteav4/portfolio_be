@@ -91,6 +91,15 @@ pub async fn login_with_password(
     });
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/signup",
+    request_body = SignUpWithPasswordRequest,
+    responses(
+        (status = 200, description = "Signup successful", body = AuthResponse),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn signup(
     State(state): State<AppState>,
     Json(req): Json<SignUpWithPasswordRequest>,

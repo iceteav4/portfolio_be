@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
-use strum::{Display, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
 use crate::{
@@ -11,23 +11,10 @@ use crate::{
     utils::error::AppError,
 };
 
-#[derive(Debug, EnumString, Display, Deserialize, Serialize)]
+#[derive(Debug, EnumString, Display, Deserialize, Serialize, AsRefStr)]
+#[strum(serialize_all = "lowercase")]
 pub enum CryptoSource {
     CoinGecko,
-}
-
-impl From<String> for CryptoSource {
-    fn from(value: String) -> Self {
-        CryptoSource::from_str(&value).expect("Invalid string for CryptoSource")
-    }
-}
-
-impl AsRef<str> for CryptoSource {
-    fn as_ref(&self) -> &str {
-        match self {
-            CryptoSource::CoinGecko => "coingecko",
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -39,6 +26,7 @@ pub struct CryptoAsset {
     pub symbol: String,
     pub name: String,
     pub image: AssetImage,
+    pub external_id: String,
     pub platform_contract_map: HashMap<String, String>,
 }
 
@@ -73,23 +61,17 @@ impl Asset for CryptoAsset {
 }
 
 impl CryptoAsset {
-    pub fn from_row(
-        asset_row: AssetRow,
-        crypto_row: Option<CryptoAssetRow>,
-    ) -> Result<Self, AppError> {
-        let platform_contract_map: HashMap<String, String> = match crypto_row {
-            Some(v) => serde_json::from_value(v.platform_contract_map)?,
-            None => HashMap::new(),
-        };
-
+    pub fn from_row(asset_row: AssetRow, crypto_row: CryptoAssetRow) -> Result<Self, AppError> {
+        let platform_contract_map = serde_json::from_value(crypto_row.platform_contract_map)?;
         Ok(Self {
             id: asset_row.id,
             created_at: asset_row.created_at,
             asset_type: AssetType::from(asset_row.asset_type),
-            source: CryptoSource::from(asset_row.source),
+            source: asset_row.source.parse().unwrap(),
             symbol: asset_row.symbol,
             name: asset_row.name,
             image: serde_json::from_value(asset_row.image)?,
+            external_id: crypto_row.external_id,
             platform_contract_map,
         })
     }
