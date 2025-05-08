@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize, Serialize, EnumString, Display)]
+#[derive(Debug, Deserialize, Serialize, EnumString, Display, ToSchema)]
 pub enum AssetType {
     Crypto,
     Stock,
@@ -17,7 +18,7 @@ impl From<String> for AssetType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, FromRow)]
+#[derive(Debug, Deserialize, Serialize, FromRow, ToSchema)]
 #[sqlx(type_name = "JSONB")]
 pub struct AssetImage {
     pub thumb: Option<String>,

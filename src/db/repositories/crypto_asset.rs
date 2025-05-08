@@ -1,6 +1,5 @@
 use sqlx::PgPool;
 use time::OffsetDateTime;
-use tracing::info;
 
 use crate::models::common::asset::AssetType;
 use crate::models::database::{asset::AssetRow, crypto_asset::CryptoAssetRow};

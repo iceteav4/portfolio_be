@@ -2,9 +2,11 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use rust_decimal::Error as DecimalError;
 use serde_json::Error as SerdeError;
 use sqlx::Error as SqlxError;
 use strum::Display;
+use strum::ParseError as StrumParseError;
 use time::error::{Format as TimeFormatError, Parse as TimeParseError};
 use tracing::error;
 
@@ -20,6 +22,8 @@ pub enum AppError {
     InternalServerError,
     TimeParseError(TimeParseError),
     TimeFormatError(TimeFormatError),
+    StrumParseError(StrumParseError),
+    DecimalError(DecimalError),
 }
 
 impl AppError {
@@ -57,17 +61,19 @@ impl AppError {
             ),
             AppError::TimeParseError(err) => {
                 error!("Time parse error: {}", err);
-                (
-                    StatusCode::BAD_REQUEST,
-                    "Invalid datetime format".to_string(),
-                )
+                (StatusCode::BAD_REQUEST, "Invalid datetime format".into())
             }
             AppError::TimeFormatError(err) => {
                 error!("Time format error: {}", err);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Error formatting datetime".to_string(),
-                )
+                (StatusCode::BAD_REQUEST, "Error formatting datetime".into())
+            }
+            AppError::StrumParseError(err) => {
+                error!("Strum parse error: {}", err);
+                (StatusCode::BAD_REQUEST, "Invalid enum value".into())
+            }
+            AppError::DecimalError(err) => {
+                error!("Decimal error: {}", err);
+                (StatusCode::BAD_REQUEST, "Invalid decimal value".into())
             }
         }
     }
@@ -107,5 +113,17 @@ impl From<TimeFormatError> for AppError {
 impl From<reqwest::Error> for AppError {
     fn from(err: reqwest::Error) -> Self {
         AppError::HttpError(err.to_string())
+    }
+}
+
+impl From<StrumParseError> for AppError {
+    fn from(err: StrumParseError) -> Self {
+        AppError::StrumParseError(err)
+    }
+}
+
+impl From<DecimalError> for AppError {
+    fn from(err: DecimalError) -> Self {
+        AppError::DecimalError(err)
     }
 }

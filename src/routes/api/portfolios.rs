@@ -9,7 +9,6 @@ use axum::{
 
 pub fn create_router() -> Router<AppState> {
     Router::new()
-        .route("/", post(create_portfolio))
+        .route("/", post(create_portfolio).get(get_my_portfolios))
         .route("/{id}", get(get_portfolio_by_id))
-        .route("/", get(get_my_portfolios))
 }

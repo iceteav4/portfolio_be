@@ -1,8 +1,7 @@
-use super::asset_position::AssetPosition;
+use super::portfolio_asset::PortfolioAsset;
 use crate::models::database::portfolio::PortfolioRow;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use time::OffsetDateTime;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -12,7 +11,7 @@ pub struct Portfolio {
     pub name: String,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
-    pub positions: HashMap<String, AssetPosition>, // key is asset.id()
+    pub assets: Vec<PortfolioAsset>,
 }
 
 impl Portfolio {
@@ -23,14 +22,11 @@ impl Portfolio {
             name: row.name,
             created_at: row.created_at,
             updated_at: row.updated_at,
-            positions: HashMap::new(),
+            assets: Vec::new(),
         })
     }
 
-    pub fn total_value(&self) -> Decimal {
-        self.positions
-            .values()
-            .map(|pos| pos.total_buy_value() - pos.total_sell_value())
-            .sum()
+    pub fn current_balance(self) -> Decimal {
+        Decimal::MIN
     }
 }

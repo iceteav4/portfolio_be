@@ -1,5 +1,6 @@
 use sqlx::PgPool;
 
+use crate::models::database::transaction::TransactionRow;
 use crate::models::domain::transaction::{CreateMultiTransaction, CreateTransaction};
 use crate::models::entities::transaction::Transaction;
 use crate::utils::error::AppError;
@@ -18,7 +19,7 @@ impl TransactionRepo {
         &self,
         inp: CreateTransaction,
     ) -> Result<Transaction, AppError> {
-        let entity = sqlx::query_as!(Transaction,
+        let row = sqlx::query_as!(TransactionRow,
             r#"INSERT INTO transactions (id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes, created_at, updated_at
@@ -37,14 +38,14 @@ impl TransactionRepo {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(entity)
+        Ok(Transaction::from_row(&row))
     }
 
     pub async fn create_multi_transaction(
         &self,
         inp: CreateMultiTransaction,
     ) -> Result<u64, AppError> {
-        if inp.items.is_empty() {
+        if inp.transactions.is_empty() {
             return Ok(0);
         }
 
@@ -55,7 +56,7 @@ impl TransactionRepo {
             "INSERT INTO transactions (id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes) ",
         );
 
-        query_builder.push_values(inp.items, |mut b, item| {
+        query_builder.push_values(inp.transactions, |mut b, item| {
             b.push_bind(SNOWFLAKE_GENERATOR.generate().unwrap())
                 .push_bind(portfolio_id)
                 .push_bind(&asset_id)
@@ -63,7 +64,7 @@ impl TransactionRepo {
                 .push_bind(item.quantity)
                 .push_bind(item.price)
                 .push_bind(item.fees)
-                .push_bind(item.currency.as_ref())
+                .push_bind(item.currency.to_string())
                 .push_bind(item.executed_at)
                 .push_bind(item.notes);
         });
@@ -71,5 +72,20 @@ impl TransactionRepo {
         let result = query_builder.build().execute(&self.pool).await?;
 
         Ok(result.rows_affected())
+    }
+
+    pub async fn get_multi_transactions_by_portfolio_asset(
+        &self,
+        portfolio_id: i64,
+        asset_id: &str,
+    ) -> Result<Vec<TransactionRow>, AppError> {
+        Ok(sqlx::query_as!(
+            TransactionRow,
+            r#"SELECT * FROM transactions WHERE portfolio_id = $1 AND asset_id = $2"#,
+            portfolio_id,
+            asset_id
+        )
+        .fetch_all(&self.pool)
+        .await?)
     }
 }

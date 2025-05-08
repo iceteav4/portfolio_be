@@ -1,0 +1,52 @@
+{
+    "rules": [
+        {
+            "name": "Rust Source Files",
+            "pattern": "**/*.rs",
+            "language": "rust"
+        },
+        {
+            "name": "Cargo Files",
+            "pattern": "**/Cargo.{toml,lock}",
+            "language": "toml"
+        },
+        {
+            "name": "SQL Migrations",
+            "pattern": "**/migrations/**/*.sql",
+            "language": "sql"
+        },
+        {
+            "name": "Environment Files",
+            "pattern": "**/settings.toml",
+            "language": "toml"
+        },
+        {
+            "name": "Configuration Files",
+            "pattern": "**/*.config.{json,yaml,yml}",
+            "language": "yaml"
+        },
+        {
+            "name": "Documentation",
+            "pattern": "**/*.md",
+            "language": "markdown"
+        },
+        {
+            "name": "Git Ignore",
+            "pattern": "**/.gitignore",
+            "language": "gitignore"
+        },
+        {
+            "name": "Docker Files",
+            "pattern": "**/Dockerfile*",
+            "language": "dockerfile"
+        }
+    ],
+    "ignore": [
+        "**/target/**",
+        "**/node_modules/**",
+        "**/.git/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/*.log"
+    ]
+}

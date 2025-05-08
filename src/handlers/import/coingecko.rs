@@ -6,18 +6,33 @@ use axum::{
 use tracing::info;
 
 use crate::{
-    db::repositories::{crypto_asset::CryptoAssetRepo, portfolio::PortfolioRepo},
-    handlers::portfolios,
+    db::repositories::{
+        crypto_asset::CryptoAssetRepo, portfolio::PortfolioRepo, transaction::TransactionRepo,
+    },
     models::{
-        domain::{auth::Claims, coingecko::RawTransaction, crypto_asset::CreateCryptoAsset},
+        domain::{
+            auth::Claims,
+            coingecko::RawTransaction,
+            crypto_asset::CreateCryptoAsset,
+            transaction::{BaseTransactionInfo, CreateMultiTransaction},
+        },
         dto::{
             api_response::{ApiResponse, GeneralResponse},
             coingecko::CoinDataResponse,
         },
     },
     state::AppState,
+    utils::error::AppError,
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/imports/coingecko/coin_data",
+    responses(
+        (status = 200, description = "User found", body = ApiResponse<GeneralResponse>),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_coin_data_by_id(
     State(state): State<AppState>,
     Path(coin_id): Path<String>,
@@ -37,7 +52,7 @@ pub async fn get_coin_data_by_id(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/api/imports/coingecko/upload_portfolio_file",
     responses(
         (status = 200, description = "User found", body = ApiResponse<GeneralResponse>),
@@ -51,20 +66,25 @@ pub async fn import_portfolio_file(
 ) -> ApiResponse<GeneralResponse> {
     let crypto_repo = CryptoAssetRepo::new(state.pool.clone());
     let portfolio_repo = PortfolioRepo::new(state.pool.clone());
+    let tx_repo = TransactionRepo::new(state.pool.clone());
     let mut portfolio_id: Option<i64> = None;
     let mut target_coin_id: Option<String> = None;
     let mut new_raw_txs: Vec<RawTransaction> = Vec::new();
     while let Some(field) = multipart.next_field().await.unwrap() {
         // Extract field_name and file_name before moving field
-        let field_name = field.name().map(|s| s.to_string());
-        let file_name = field.file_name().map(|s| s.to_string());
-        let content_type = field.content_type().map(|s| s.to_string());
+        let field_name = field.name();
+        let file_name = field.file_name();
+        let content_type = field.content_type();
+        info!(
+            "Field name: {:?}, file name: {:?}, content type: {:?}",
+            field_name, file_name, content_type
+        );
 
         if let Some(ref name) = field_name {
-            if name == "file" {
+            if name == &"file" {
                 // Check if the file is an HTML file
                 if let Some(ref ct) = content_type {
-                    if ct != "text/html" {
+                    if ct != &"text/html" {
                         return ApiResponse::error(
                             StatusCode::BAD_REQUEST,
                             "Only HTML files are allowed".to_string(),
@@ -96,7 +116,7 @@ pub async fn import_portfolio_file(
                 info!("Raw transactions: {}", raw_txs.len());
                 target_coin_id = Some(coin_id);
                 new_raw_txs = raw_txs;
-            } else if name == "portfolio_id" {
+            } else if name == &"portfolio_id" {
                 // Read the value of the portfolio_id field
                 let content = field.text().await;
                 if let Ok(id) = content {
@@ -175,6 +195,7 @@ pub async fn import_portfolio_file(
         return ApiResponse::from(e);
     }
     let existed_asset = existed_asset.unwrap();
+    let mut asset_id = coin_id;
     if existed_asset.is_none() {
         info!("Asset does not exist, create new crypto asset");
         let new_asset = crypto_repo.create_crypto_asset(create_crypto_asset).await;
@@ -184,8 +205,36 @@ pub async fn import_portfolio_file(
         }
         let new_asset = new_asset.unwrap();
         info!("New crypto asset was created with id: {}", new_asset.id);
+        asset_id = new_asset.id;
+    } else {
+        asset_id = existed_asset.unwrap().id;
     }
     // save txs
+    let txs: Result<Vec<BaseTransactionInfo>, AppError> = new_raw_txs
+        .iter()
+        .map(|tx| BaseTransactionInfo::from_raw_tx(tx))
+        .collect();
+
+    let txs = match txs {
+        Ok(txs) => txs,
+        Err(e) => {
+            info!("Failed to convert raw transactions: {}", e);
+            return ApiResponse::from(e);
+        }
+    };
+    let create_multi_txs = CreateMultiTransaction {
+        portfolio_id,
+        asset_id,
+        transactions: txs,
+    };
+
+    let new_txs = tx_repo.create_multi_transaction(create_multi_txs).await;
+    if let Err(e) = new_txs {
+        info!("Failed to create multi transactions");
+        return ApiResponse::from(e);
+    }
+    let new_txs = new_txs.unwrap();
+    info!("Total transactions created: {}", new_txs);
 
     return ApiResponse::<GeneralResponse>::general_response();
 }
