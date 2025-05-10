@@ -18,7 +18,7 @@ impl From<String> for AssetType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, FromRow, ToSchema)]
+#[derive(Debug, Deserialize, Serialize, FromRow, ToSchema, Clone)]
 #[sqlx(type_name = "JSONB")]
 pub struct AssetImage {
     pub thumb: Option<String>,
@@ -27,11 +27,11 @@ pub struct AssetImage {
 }
 
 pub trait Asset {
-    fn id(&self) -> &str;
+    fn id(&self) -> String;
     fn created_at(&self) -> OffsetDateTime;
     fn asset_type(&self) -> AssetType;
-    fn source(&self) -> &str;
-    fn symbol(&self) -> &str;
-    fn name(&self) -> &str;
-    fn image(&self) -> &AssetImage;
+    fn source(&self) -> String;
+    fn symbol(&self) -> String;
+    fn name(&self) -> String;
+    fn image(&self) -> AssetImage;
 }

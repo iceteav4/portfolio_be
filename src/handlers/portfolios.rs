@@ -6,14 +6,16 @@ use axum::{
 use tracing::info;
 
 use crate::{
-    db::repositories::portfolio::PortfolioRepo,
+    biz::portfolio::PortfolioBiz,
+    db::repositories::{asset::AssetRepo, portfolio::PortfolioRepo},
     models::{
-        domain::{auth::Claims, portfolio::CreatePortfolio},
+        domain::auth::Claims,
         dto::{
             api_response::ApiResponse,
             id_response::IdResponse,
             portfolio::{
                 BriefPortfolioListResponse, BriefPortfolioResponse, CreatePortfolioRequest,
+                PortfolioResponse,
             },
         },
     },
@@ -35,12 +37,7 @@ pub async fn create_portfolio(
 ) -> ApiResponse<IdResponse> {
     info!("Create portfolio with body request {:?}", req);
     let portfolio_repo = PortfolioRepo::new(state.pool.clone());
-    let new_portfolio = portfolio_repo
-        .create(CreatePortfolio {
-            owner_id: claims.user_id,
-            name: req.name,
-        })
-        .await;
+    let new_portfolio = portfolio_repo.create(claims.user_id, &req.name).await;
     if let Err(e) = new_portfolio {
         return ApiResponse::from(e);
     }
@@ -55,17 +52,17 @@ pub async fn create_portfolio(
     get,
     path = "/api/portfolios/{id}",
     responses(
-        (status = 200, description = "Success", body = ApiResponse<BriefPortfolioResponse>),
+        (status = 200, description = "Success", body = ApiResponse<PortfolioResponse>),
         (status = 500, description = "Internal server error")
     )
 )]
 pub async fn get_portfolio_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> ApiResponse<BriefPortfolioResponse> {
+) -> ApiResponse<PortfolioResponse> {
     info!("Get portfolio with id {}", id);
-    let portfolio_repo = PortfolioRepo::new(state.pool.clone());
-    let portfolio = portfolio_repo.get_by_id(id.parse().unwrap()).await;
+    let portfolio_biz = PortfolioBiz::new(state.pool.clone());
+    let portfolio = portfolio_biz.get_by_portfolio_id(id.parse().unwrap()).await;
     if let Err(e) = portfolio {
         return ApiResponse::from(e);
     }
@@ -74,7 +71,18 @@ pub async fn get_portfolio_by_id(
         return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
     }
     let portfolio = portfolio.unwrap();
-    ApiResponse::success(BriefPortfolioResponse::from_entity(portfolio))
+    let asset_ids: Vec<String> = portfolio
+        .assets
+        .iter()
+        .map(|a| a.asset_id.clone())
+        .collect();
+    let asset_repo = AssetRepo::new(state.pool.clone());
+    let result = asset_repo.get_multi_by_ids(&asset_ids).await;
+    if let Err(e) = result {
+        return ApiResponse::from(e);
+    }
+    let asset_rows = result.unwrap();
+    ApiResponse::success(PortfolioResponse::from_entity(portfolio, asset_rows))
 }
 
 #[utoipa::path(

@@ -1,7 +1,7 @@
 use sqlx::PgPool;
+use time::OffsetDateTime;
 
 use crate::models::database::portfolio_asset::PortfolioAssetRow;
-use crate::models::domain::portfolio_asset::CreatePortfolioAsset;
 use crate::utils::error::AppError;
 
 pub struct PortfolioAssetRepo {
@@ -13,16 +13,21 @@ impl PortfolioAssetRepo {
         Self { pool }
     }
 
-    pub async fn create(&self, inp: CreatePortfolioAsset) -> Result<PortfolioAssetRow, AppError> {
+    pub async fn create(
+        &self,
+        portfolio_id: i64,
+        asset_id: &String,
+    ) -> Result<PortfolioAssetRow, AppError> {
         Ok(sqlx::query_as!(
             PortfolioAssetRow,
             r#"
-                INSERT INTO portfolio_assets (portfolio_id, asset_id)
-                VALUES ($1, $2)
+                INSERT INTO portfolio_assets (portfolio_id, asset_id, created_at)
+                VALUES ($1, $2, $3)
                 RETURNING portfolio_id, asset_id, created_at
             "#,
-            inp.portfolio_id,
-            inp.asset_id,
+            portfolio_id,
+            asset_id,
+            OffsetDateTime::now_utc(),
         )
         .fetch_one(&self.pool)
         .await?)

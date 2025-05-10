@@ -15,8 +15,8 @@ pub struct StockAsset {
 }
 
 impl Asset for StockAsset {
-    fn id(&self) -> &str {
-        &self.id
+    fn id(&self) -> String {
+        self.id.clone()
     }
 
     fn created_at(&self) -> OffsetDateTime {
@@ -27,19 +27,19 @@ impl Asset for StockAsset {
         AssetType::Crypto
     }
 
-    fn source(&self) -> &str {
-        &self.source
+    fn source(&self) -> String {
+        self.source.clone()
     }
 
-    fn symbol(&self) -> &str {
-        &self.symbol
+    fn symbol(&self) -> String {
+        self.symbol.clone()
     }
 
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
-    fn image(&self) -> &AssetImage {
-        &self.image
+    fn image(&self) -> AssetImage {
+        self.image.clone()
     }
 }

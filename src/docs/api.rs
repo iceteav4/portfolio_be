@@ -34,7 +34,7 @@ use crate::models::dto;
             dto::auth::SignUpWithPasswordRequest,
             dto::auth::AuthResponse,
             dto::portfolio::CreatePortfolioRequest,
-            dto::portfolio::BriefPortfolioResponse,
+            dto::portfolio::PortfolioResponse,
             dto::portfolio::BriefPortfolioListResponse,
             dto::user::UserResponse,
             dto::user::UserMeResponse,

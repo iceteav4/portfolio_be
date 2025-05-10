@@ -7,7 +7,8 @@ use tracing::info;
 
 use crate::{
     db::repositories::{
-        crypto_asset::CryptoAssetRepo, portfolio::PortfolioRepo, transaction::TransactionRepo,
+        crypto_asset::CryptoAssetRepo, portfolio::PortfolioRepo,
+        portfolio_asset::PortfolioAssetRepo, transaction::TransactionRepo,
     },
     models::{
         domain::{
@@ -195,7 +196,7 @@ pub async fn import_portfolio_file(
         return ApiResponse::from(e);
     }
     let existed_asset = existed_asset.unwrap();
-    let mut asset_id = coin_id;
+    let asset_id;
     if existed_asset.is_none() {
         info!("Asset does not exist, create new crypto asset");
         let new_asset = crypto_repo.create_crypto_asset(create_crypto_asset).await;
@@ -209,6 +210,18 @@ pub async fn import_portfolio_file(
     } else {
         asset_id = existed_asset.unwrap().id;
     }
+    // create portfolio asset
+    let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
+    let portfolio_asset = pa_repo.create(portfolio_id, &asset_id).await;
+    if let Err(e) = portfolio_asset {
+        info!("Failed to create portfolio asset");
+        return ApiResponse::from(e);
+    }
+    let portfolio_asset = portfolio_asset.unwrap();
+    info!(
+        "Created portfolio asset with portfolio id: {}, asset id: {}",
+        portfolio_asset.portfolio_id, portfolio_asset.asset_id
+    );
     // save txs
     let txs: Result<Vec<BaseTransactionInfo>, AppError> = new_raw_txs
         .iter()
