@@ -11,6 +11,7 @@ use super::coingecko::RawTransaction;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTransaction {
+    pub external_id: Option<String>,
     pub portfolio_id: i64,
     pub asset_id: String,
     pub fees: Option<Decimal>,
@@ -24,6 +25,7 @@ pub struct CreateTransaction {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BaseTransactionInfo {
+    pub external_id: Option<String>,
     pub fees: Decimal,
     pub executed_at: OffsetDateTime,
     pub notes: Option<String>,
@@ -36,6 +38,7 @@ pub struct BaseTransactionInfo {
 impl BaseTransactionInfo {
     pub fn from_raw_tx(raw_tx: &RawTransaction) -> Result<Self, AppError> {
         Ok(Self {
+            external_id: Some(raw_tx.id.to_string()),
             fees: raw_tx.fees.parse()?,
             executed_at: OffsetDateTime::parse(&raw_tx.transaction_timestamp, &Rfc3339)?,
             notes: raw_tx.notes.clone(),
@@ -52,4 +55,14 @@ pub struct CreateMultiTransaction {
     pub portfolio_id: i64,
     pub asset_id: String,
     pub transactions: Vec<BaseTransactionInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateTransaction {
+    pub tx_type: Option<TxType>,
+    pub notes: Option<String>,
+    pub quantity: Option<Decimal>,
+    pub price: Option<Decimal>,
+    pub fees: Option<Decimal>,
+    pub executed_at: Option<OffsetDateTime>,
 }

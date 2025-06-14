@@ -1,7 +1,11 @@
 use sqlx::PgPool;
+use time::OffsetDateTime;
+use rust_decimal::Decimal;
 
 use crate::models::database::transaction::TransactionRow;
-use crate::models::domain::transaction::{CreateMultiTransaction, CreateTransaction};
+use crate::models::domain::transaction::{
+    CreateMultiTransaction, CreateTransaction, UpdateTransaction,
+};
 use crate::models::entities::transaction::Transaction;
 use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
@@ -20,11 +24,12 @@ impl TransactionRepo {
         inp: CreateTransaction,
     ) -> Result<Transaction, AppError> {
         let row = sqlx::query_as!(TransactionRow,
-            r#"INSERT INTO transactions (id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes, created_at, updated_at
+            r#"INSERT INTO transactions (id, external_id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id, external_id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes, created_at, updated_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap(),
+            inp.external_id,
             inp.portfolio_id,
             inp.asset_id,
             inp.tx_type.to_string(),
@@ -53,11 +58,12 @@ impl TransactionRepo {
         let asset_id = inp.asset_id.clone();
 
         let mut query_builder = sqlx::QueryBuilder::new(
-            "INSERT INTO transactions (id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes) ",
+            "INSERT INTO transactions (id, external_id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes) ",
         );
 
         query_builder.push_values(inp.transactions, |mut b, item| {
             b.push_bind(SNOWFLAKE_GENERATOR.generate().unwrap())
+                .push_bind(item.external_id)
                 .push_bind(portfolio_id)
                 .push_bind(&asset_id)
                 .push_bind(item.tx_type.to_string())
@@ -87,5 +93,92 @@ impl TransactionRepo {
         )
         .fetch_all(&self.pool)
         .await?)
+    }
+
+    pub async fn update_transaction_by_id(
+        &self,
+        tx_id: i64,
+        inp: UpdateTransaction,
+    ) -> Result<(), AppError> {
+        let mut query_builder = sqlx::QueryBuilder::new("UPDATE transactions SET ");
+
+        let mut updates = Vec::new();
+        let mut param_count = 1;
+
+        if let Some(ref tx_type) = inp.tx_type {
+            updates.push(format!("tx_type = ${}", param_count));
+            param_count += 1;
+        }
+
+        // Add notes update if provided
+        if let Some(ref notes) = inp.notes {
+            updates.push(format!("notes = ${}", param_count));
+            param_count += 1;
+        }
+
+        // Add quantity update if provided
+        if let Some(ref quantity) = inp.quantity {
+            updates.push(format!("quantity = ${}", param_count));
+            param_count += 1;
+        }
+
+        // Add price update if provided
+        if let Some(ref price) = inp.price {
+            updates.push(format!("price = ${}", param_count));
+            param_count += 1;
+        }
+
+        // Add fees update if provided
+        if let Some(ref fees) = inp.fees {
+            updates.push(format!("fees = ${}", param_count));
+            param_count += 1;
+        }
+
+        // Add executed_at update if provided
+        if let Some(ref executed_at) = inp.executed_at {
+            updates.push(format!("executed_at = ${}", param_count));
+            param_count += 1;
+        }
+
+        // Add updated_at timestamp
+        updates.push(format!("updated_at = ${}", param_count));
+        param_count += 1;
+
+        // Add WHERE clause
+        query_builder.push(format!(
+            "{} WHERE id = ${}",
+            updates.join(", "),
+            param_count
+        ));
+
+        // Build the query
+        let mut query = query_builder.build();
+
+        // Bind all parameters in order
+        if let Some(ref tx_type) = inp.tx_type {
+            query = query.bind(tx_type.to_string());
+        }
+        if let Some(ref notes) = inp.notes {
+            query = query.bind(notes);
+        }
+        if let Some(ref quantity) = inp.quantity {
+            query = query.bind(quantity);
+        }
+        if let Some(ref price) = inp.price {
+            query = query.bind(price);
+        }
+        if let Some(ref fees) = inp.fees {
+            query = query.bind(fees);
+        }
+        if let Some(ref executed_at) = inp.executed_at {
+            query = query.bind(executed_at);
+        }
+        query = query.bind(OffsetDateTime::now_utc());
+        query = query.bind(tx_id);
+
+        // Execute the query
+        query.execute(&self.pool).await?;
+
+        Ok(())
     }
 }

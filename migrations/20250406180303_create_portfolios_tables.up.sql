@@ -13,7 +13,7 @@ CREATE TABLE assets (
 
 -- Create crypto_assets table extending assets
 CREATE TABLE IF NOT EXISTS crypto_assets (
-    asset_id VARCHAR(50) PRIMARY KEY REFERENCES assets(id),
+    asset_id VARCHAR(50) PRIMARY KEY REFERENCES assets (id),
     external_id VARCHAR(50) NOT NULL,
     platform_contract_map JSONB NOT NULL DEFAULT '{}'
 );
@@ -45,6 +45,7 @@ CREATE TABLE portfolio_assets (
 -- Create transactions table
 CREATE TABLE transactions (
     id BIGINT PRIMARY KEY,
+    external_id VARCHAR(50),
     portfolio_id BIGINT NOT NULL REFERENCES portfolios (id),
     asset_id VARCHAR(50) NOT NULL REFERENCES assets (id),
     tx_type VARCHAR(20) NOT NULL,

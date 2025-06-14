@@ -212,17 +212,38 @@ pub async fn import_portfolio_file(
     }
     // create portfolio asset
     let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
-    let portfolio_asset = pa_repo.create(portfolio_id, &asset_id).await;
-    if let Err(e) = portfolio_asset {
-        info!("Failed to create portfolio asset");
+    let exist_pa = pa_repo
+        .get_one_by_portfolio_id_and_asset_id(portfolio_id, &asset_id)
+        .await;
+    if let Err(e) = exist_pa {
+        info!(
+            "Failed to checking exist portfolio_id {} and asset_id {}",
+            portfolio_id, &asset_id
+        );
         return ApiResponse::from(e);
     }
-    let portfolio_asset = portfolio_asset.unwrap();
-    info!(
-        "Created portfolio asset with portfolio id: {}, asset id: {}",
-        portfolio_asset.portfolio_id, portfolio_asset.asset_id
-    );
-    // save txs
+    let exist_pa = exist_pa.unwrap();
+    if exist_pa.is_none() {
+        let portfolio_asset = pa_repo.create(portfolio_id, &asset_id).await;
+        if let Err(e) = portfolio_asset {
+            info!("Failed to create portfolio asset");
+            return ApiResponse::from(e);
+        }
+        let portfolio_asset = portfolio_asset.unwrap();
+        info!(
+            "Created portfolio asset with portfolio id: {}, asset id: {}",
+            portfolio_asset.portfolio_id, portfolio_asset.asset_id
+        );
+    }
+    // save txs when have new tx
+    let all_pa_txs = tx_repo
+        .get_multi_transactions_by_portfolio_asset(portfolio_id, &asset_id)
+        .await;
+    if let Err(e) = all_pa_txs {
+        info!("Failed to get transactions");
+        return ApiResponse::from(e);
+    }
+    let all_pa_txs = all_pa_txs.unwrap();
     let txs: Result<Vec<BaseTransactionInfo>, AppError> = new_raw_txs
         .iter()
         .map(|tx| BaseTransactionInfo::from_raw_tx(tx))

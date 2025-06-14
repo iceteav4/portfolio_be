@@ -33,6 +33,21 @@ impl PortfolioAssetRepo {
         .await?)
     }
 
+    pub async fn get_one_by_portfolio_id_and_asset_id(
+        &self,
+        portfolio_id: i64,
+        asset_id: &String,
+    ) -> Result<Option<PortfolioAssetRow>, AppError> {
+        Ok(sqlx::query_as!(
+            PortfolioAssetRow,
+            r#"SELECT * FROM portfolio_assets WHERE portfolio_id = $1 AND asset_id = $2"#,
+            portfolio_id,
+            asset_id
+        )
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+
     pub async fn get_multi_by_portfolio_id(
         self,
         portfolio_id: i64,
