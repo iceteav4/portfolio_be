@@ -19,7 +19,6 @@ pub enum AppError {
     CoinGeckoError(String),
     HttpError(String),
     Unauthorized(String),
-    InternalServerError,
     TimeParseError(TimeParseError),
     TimeFormatError(TimeFormatError),
     StrumParseError(StrumParseError),
@@ -55,10 +54,6 @@ impl AppError {
                 )
             }
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
-            AppError::InternalServerError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                String::from("Internal Server Error"),
-            ),
             AppError::TimeParseError(err) => {
                 error!("Time parse error: {}", err);
                 (StatusCode::BAD_REQUEST, "Invalid datetime format".into())

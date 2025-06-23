@@ -3,6 +3,7 @@ pub mod asset;
 pub mod auth;
 pub mod coingecko;
 pub mod health;
-pub mod id_response;
 pub mod portfolio;
+pub mod transaction;
 pub mod user;
+pub mod user_session;

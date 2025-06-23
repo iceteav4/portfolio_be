@@ -2,8 +2,14 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
-use crate::models::entities::user::UserStatus;
-use crate::utils::datetime::serialize_datetime;
+use crate::{models::domain::user::UserStatus, utils::datetime::serialize_datetime};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateUser {
+    pub email: String,
+    pub hashed_password: Option<String>,
+    pub name: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserResponse {

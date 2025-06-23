@@ -53,7 +53,7 @@ pub async fn get_user_me(
         Ok(Some(user)) => {
             return ApiResponse::success(UserMeResponse {
                 id: user.id.to_string(),
-                status: user.status,
+                status: user.status.parse().unwrap(),
                 email: user.email,
                 phone_number: user.phone_number,
                 name: user.name,

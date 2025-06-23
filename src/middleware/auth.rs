@@ -19,8 +19,8 @@ use time::OffsetDateTime;
 use crate::models::domain::auth::Claims;
 use crate::state::AppState;
 use crate::{
-    db::repositories::user_session::UserSessionRepo,
-    models::domain::user_session::CreateUserSession, utils::error::AppError,
+    db::repositories::user_session::UserSessionRepo, models::dto::user_session::CreateUserSession,
+    utils::error::AppError,
 };
 
 // Convert UserSession to JWT token

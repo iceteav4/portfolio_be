@@ -1,13 +1,19 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::models::{common::asset::Asset, entities::portfolio::Portfolio};
+use crate::models::database::portfolio::PortfolioRow;
 
 use super::asset::AssetResponse;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreatePortfolioRequest {
     pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreatePortfolioAssetRequest {
+    pub portfolio_id: i64,
+    pub asset_id: String,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -17,19 +23,6 @@ pub struct PortfolioResponse {
     pub assets: Vec<AssetResponse>,
 }
 
-impl PortfolioResponse {
-    pub fn from_entity(entity: Portfolio, assets: Vec<impl Asset>) -> Self {
-        Self {
-            id: entity.id.to_string(),
-            name: entity.name,
-            assets: assets
-                .into_iter()
-                .map(|asset| AssetResponse::from_asset(asset))
-                .collect(),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BriefPortfolioResponse {
     pub id: String,
@@ -37,10 +30,10 @@ pub struct BriefPortfolioResponse {
 }
 
 impl BriefPortfolioResponse {
-    pub fn from_entity(entity: Portfolio) -> Self {
+    pub fn from_row(row: PortfolioRow) -> Self {
         Self {
-            id: entity.id.to_string(),
-            name: entity.name,
+            id: row.id.to_string(),
+            name: row.name,
         }
     }
 }

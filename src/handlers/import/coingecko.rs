@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     Extension,
     extract::{Multipart, Path, State},
@@ -6,24 +8,23 @@ use axum::{
 use tracing::info;
 
 use crate::{
+    biz::asset::generate_asset_id,
     db::repositories::{
-        crypto_asset::CryptoAssetRepo, portfolio::PortfolioRepo,
-        portfolio_asset::PortfolioAssetRepo, transaction::TransactionRepo,
+        asset::AssetRepo, portfolio::PortfolioRepo, portfolio_asset::PortfolioAssetRepo,
+        transaction::TransactionRepo,
     },
     models::{
-        domain::{
-            auth::Claims,
-            coingecko::RawTransaction,
-            crypto_asset::CreateCryptoAsset,
-            transaction::{BaseTransactionInfo, CreateMultiTransaction},
-        },
+        common::asset::AssetType,
+        database::transaction::TransactionRow,
+        domain::{auth::Claims, coingecko::RawTransaction, transaction::BaseTransactionInfo},
         dto::{
             api_response::{ApiResponse, GeneralResponse},
+            asset::CreateAssetRepo,
             coingecko::CoinDataResponse,
+            transaction::{CreateMultiTransaction, UpdateTransaction},
         },
     },
     state::AppState,
-    utils::error::AppError,
 };
 
 #[utoipa::path(
@@ -65,7 +66,7 @@ pub async fn import_portfolio_file(
     Extension(claims): Extension<Claims>,
     mut multipart: Multipart,
 ) -> ApiResponse<GeneralResponse> {
-    let crypto_repo = CryptoAssetRepo::new(state.pool.clone());
+    let asset_repo = AssetRepo::new(state.pool.clone());
     let portfolio_repo = PortfolioRepo::new(state.pool.clone());
     let tx_repo = TransactionRepo::new(state.pool.clone());
     let mut portfolio_id: Option<i64> = None;
@@ -158,7 +159,7 @@ pub async fn import_portfolio_file(
         coin_id,
         new_raw_txs.len()
     );
-    let portfolio = portfolio_repo.get_by_id(portfolio_id).await;
+    let portfolio = portfolio_repo.get_one_by_id(portfolio_id).await;
     match portfolio {
         Ok(portfolio) => match portfolio {
             Some(p) => {
@@ -189,80 +190,110 @@ pub async fn import_portfolio_file(
         return ApiResponse::from(e);
     }
     let coin_data = coin_data.unwrap();
-    let create_crypto_asset = CreateCryptoAsset::from_coin_data(coin_data);
-    let existed_asset = crypto_repo.get_by_id(&create_crypto_asset.id).await;
+    // create new asset if needed
+    let asset_id = generate_asset_id(&AssetType::Crypto, &coin_data.id);
+    let existed_asset = asset_repo.get_one_by_id(&asset_id).await;
     if let Err(e) = existed_asset {
         info!("Failed to get asset");
         return ApiResponse::from(e);
     }
     let existed_asset = existed_asset.unwrap();
-    let asset_id;
     if existed_asset.is_none() {
         info!("Asset does not exist, create new crypto asset");
-        let new_asset = crypto_repo.create_crypto_asset(create_crypto_asset).await;
+        let new_asset = asset_repo
+            .create_one(CreateAssetRepo::from_coin_data(coin_data))
+            .await;
         if let Err(e) = new_asset {
             info!("Failed to create asset");
             return ApiResponse::from(e);
         }
-        let new_asset = new_asset.unwrap();
-        info!("New crypto asset was created with id: {}", new_asset.id);
-        asset_id = new_asset.id;
-    } else {
-        asset_id = existed_asset.unwrap().id;
+        info!("New crypto asset was created with id: {}", asset_id);
     }
     // create portfolio asset
     let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
     let exist_pa = pa_repo
         .get_one_by_portfolio_id_and_asset_id(portfolio_id, &asset_id)
         .await;
-    if let Err(e) = exist_pa {
-        info!(
-            "Failed to checking exist portfolio_id {} and asset_id {}",
-            portfolio_id, &asset_id
-        );
-        return ApiResponse::from(e);
-    }
-    let exist_pa = exist_pa.unwrap();
-    if exist_pa.is_none() {
-        let portfolio_asset = pa_repo.create(portfolio_id, &asset_id).await;
-        if let Err(e) = portfolio_asset {
-            info!("Failed to create portfolio asset");
+    match exist_pa {
+        Err(e) => {
+            info!(
+                "Failed to checking exist portfolio_id {} and asset_id {}",
+                portfolio_id, &asset_id
+            );
             return ApiResponse::from(e);
         }
-        let portfolio_asset = portfolio_asset.unwrap();
-        info!(
-            "Created portfolio asset with portfolio id: {}, asset id: {}",
-            portfolio_asset.portfolio_id, portfolio_asset.asset_id
-        );
+        Ok(None) => {
+            let portfolio_asset = pa_repo.create(portfolio_id, &asset_id).await;
+            if let Err(e) = portfolio_asset {
+                info!("Failed to create portfolio asset");
+                return ApiResponse::from(e);
+            }
+            let portfolio_asset = portfolio_asset.unwrap();
+            info!(
+                "Created portfolio asset with portfolio id: {}, asset id: {}",
+                portfolio_asset.portfolio_id, portfolio_asset.asset_id
+            );
+        }
+        _ => {}
     }
     // save txs when have new tx
     let all_pa_txs = tx_repo
-        .get_multi_transactions_by_portfolio_asset(portfolio_id, &asset_id)
+        .get_multi_txs_by_portfolio_id_asset_id(portfolio_id, &asset_id)
         .await;
     if let Err(e) = all_pa_txs {
         info!("Failed to get transactions");
         return ApiResponse::from(e);
     }
     let all_pa_txs = all_pa_txs.unwrap();
-    let txs: Result<Vec<BaseTransactionInfo>, AppError> = new_raw_txs
-        .iter()
-        .map(|tx| BaseTransactionInfo::from_raw_tx(tx))
+    let external_id_to_tx: HashMap<String, TransactionRow> = all_pa_txs
+        .into_iter()
+        .filter_map(|tx| tx.external_id.clone().map(|external_id| (external_id, tx)))
         .collect();
-
-    let txs = match txs {
-        Ok(txs) => txs,
-        Err(e) => {
-            info!("Failed to convert raw transactions: {}", e);
+    let mut new_txs = Vec::new();
+    for raw_tx in new_raw_txs.into_iter() {
+        let base_tx_info = BaseTransactionInfo::from_raw_tx(raw_tx);
+        if let Err(e) = base_tx_info {
+            info!("Failed to convert raw transaction to base tx info: {}", e);
             return ApiResponse::from(e);
         }
-    };
+        let base_tx_info = base_tx_info.unwrap();
+        if base_tx_info.external_id.is_none() {
+            return ApiResponse::error(
+                StatusCode::BAD_REQUEST,
+                "Transaction from Coingecko does not have id",
+            );
+        }
+        let external_id = base_tx_info.external_id.clone().unwrap();
+        if let Some(tx) = external_id_to_tx.get(&external_id) {
+            // external transaction existed, update current transaction
+            let update_result = tx_repo
+                .update_tx_by_id(
+                    tx.id,
+                    UpdateTransaction {
+                        tx_type: Some(base_tx_info.tx_type),
+                        notes: base_tx_info.notes,
+                        quantity: Some(base_tx_info.quantity),
+                        price: Some(base_tx_info.price),
+                        fees: Some(base_tx_info.fees),
+                        executed_at: Some(base_tx_info.executed_at),
+                    },
+                )
+                .await;
+            if let Err(e) = update_result {
+                info!("Failed to update transaction: {}", e);
+                return ApiResponse::from(e);
+            }
+        } else {
+            new_txs.push(base_tx_info);
+        }
+    }
     let create_multi_txs = CreateMultiTransaction {
         portfolio_id,
         asset_id,
-        transactions: txs,
+        transactions: new_txs,
     };
 
-    let new_txs = tx_repo.create_multi_transaction(create_multi_txs).await;
+    let new_txs = tx_repo.create_multi_txs(create_multi_txs).await;
     if let Err(e) = new_txs {
         info!("Failed to create multi transactions");
         return ApiResponse::from(e);
@@ -270,5 +301,5 @@ pub async fn import_portfolio_file(
     let new_txs = new_txs.unwrap();
     info!("Total transactions created: {}", new_txs);
 
-    return ApiResponse::<GeneralResponse>::general_response();
+    return ApiResponse::<GeneralResponse>::success_general_response();
 }

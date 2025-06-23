@@ -12,6 +12,11 @@ pub struct GeneralResponse {
 }
 
 #[derive(Serialize, ToSchema)]
+pub struct IdResponse {
+    pub id: String,
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub message: String,
     pub status_code: u16,
@@ -40,7 +45,7 @@ where
         }
     }
 
-    pub fn general_response() -> ApiResponse<GeneralResponse> {
+    pub fn success_general_response() -> ApiResponse<GeneralResponse> {
         ApiResponse {
             server_time: OffsetDateTime::now_utc(),
             errors: None,

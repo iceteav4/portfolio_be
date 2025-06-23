@@ -1,9 +1,8 @@
 use sqlx::PgPool;
 
 use crate::models::database::user::UserRow;
-use crate::models::domain::user::CreateUser;
-use crate::models::entities::user::User;
-use crate::models::entities::user::UserStatus;
+use crate::models::domain::user::UserStatus;
+use crate::models::dto::user::CreateUser;
 use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
@@ -17,8 +16,8 @@ impl UserRepo {
         Self { pool }
     }
 
-    pub async fn create_user(&self, inp: CreateUser) -> Result<User, AppError> {
-        let row = sqlx::query_as!(
+    pub async fn create_user(&self, inp: CreateUser) -> Result<UserRow, AppError> {
+        Ok(sqlx::query_as!(
             UserRow,
             r#"
             INSERT INTO users (id, status, email, hashed_password, name)
@@ -26,19 +25,17 @@ impl UserRepo {
             RETURNING id, email, phone_number, hashed_password, name, status, created_at, updated_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap() as i64,
-            UserStatus::Active.as_str(),
+            UserStatus::Active.to_string(),
             inp.email,
             inp.hashed_password,
             inp.name,
         )
         .fetch_one(&self.pool)
-        .await?;
-
-        User::from_row(Some(row)).ok_or_else(|| AppError::InternalServerError)
+        .await?)
     }
 
-    pub async fn get_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
-        let row = sqlx::query_as!(
+    pub async fn get_by_id(&self, id: i64) -> Result<Option<UserRow>, AppError> {
+        Ok(sqlx::query_as!(
             UserRow,
             r#"
             SELECT id, email, phone_number, hashed_password, name, status, created_at, updated_at
@@ -48,12 +45,11 @@ impl UserRepo {
             id as i64
         )
         .fetch_optional(&self.pool)
-        .await?;
-        Ok(User::from_row(row))
+        .await?)
     }
 
-    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
-        let row = sqlx::query_as!(
+    pub async fn get_by_email(&self, email: &str) -> Result<Option<UserRow>, AppError> {
+        Ok(sqlx::query_as!(
             UserRow,
             r#"
             SELECT id, email, phone_number, hashed_password, name, status, created_at, updated_at
@@ -63,7 +59,6 @@ impl UserRepo {
             email
         )
         .fetch_optional(&self.pool)
-        .await?;
-        Ok(User::from_row(row))
+        .await?)
     }
 }

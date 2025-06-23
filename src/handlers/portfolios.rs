@@ -6,16 +6,17 @@ use axum::{
 use tracing::info;
 
 use crate::{
-    biz::portfolio::PortfolioBiz,
-    db::repositories::{asset::AssetRepo, portfolio::PortfolioRepo},
+    db::repositories::{
+        asset::AssetRepo, portfolio::PortfolioRepo, portfolio_asset::PortfolioAssetRepo,
+    },
     models::{
         domain::auth::Claims,
         dto::{
-            api_response::ApiResponse,
-            id_response::IdResponse,
+            api_response::{ApiResponse, GeneralResponse, IdResponse},
+            asset::AssetResponse,
             portfolio::{
-                BriefPortfolioListResponse, BriefPortfolioResponse, CreatePortfolioRequest,
-                PortfolioResponse,
+                BriefPortfolioListResponse, BriefPortfolioResponse, CreatePortfolioAssetRequest,
+                CreatePortfolioRequest, PortfolioResponse,
             },
         },
     },
@@ -37,7 +38,7 @@ pub async fn create_portfolio(
 ) -> ApiResponse<IdResponse> {
     info!("Create portfolio with body request {:?}", req);
     let portfolio_repo = PortfolioRepo::new(state.pool.clone());
-    let new_portfolio = portfolio_repo.create(claims.user_id, &req.name).await;
+    let new_portfolio = portfolio_repo.create_one(claims.user_id, &req.name).await;
     if let Err(e) = new_portfolio {
         return ApiResponse::from(e);
     }
@@ -46,6 +47,53 @@ pub async fn create_portfolio(
     ApiResponse::success(IdResponse {
         id: new_portfolio.id.to_string(),
     })
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/portfolios/{portfolio_id}/assets",
+    responses(
+        (status = 200, description = "Success", body = ApiResponse<IdResponse>),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn create_portfolio_asset(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Json(req): Json<CreatePortfolioAssetRequest>,
+) -> ApiResponse<GeneralResponse> {
+    let pfl_repo = PortfolioRepo::new(state.pool.clone());
+    let pfl_row = pfl_repo.get_one_by_id(req.portfolio_id).await;
+    if let Err(e) = pfl_row {
+        return ApiResponse::from(e);
+    }
+    let pfl_row = pfl_row.unwrap();
+    if pfl_row.is_none() {
+        return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
+    }
+    let pfl_row = pfl_row.unwrap();
+    if pfl_row.owner_id != claims.user_id {
+        return ApiResponse::error(
+            StatusCode::FORBIDDEN,
+            "You are not the owner of this portfolio".to_string(),
+        );
+    }
+    let asset_repo = AssetRepo::new(state.pool.clone());
+    let asset = asset_repo.get_one_by_id(&req.asset_id).await;
+    if let Err(e) = asset {
+        return ApiResponse::from(e);
+    }
+    let asset = asset.unwrap();
+    if asset.is_none() {
+        return ApiResponse::error(StatusCode::NOT_FOUND, "Asset not found".to_string());
+    }
+
+    let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
+    let pa_row = pa_repo.create(req.portfolio_id, &req.asset_id).await;
+    if let Err(e) = pa_row {
+        return ApiResponse::from(e);
+    }
+    return ApiResponse::<GeneralResponse>::success_general_response();
 }
 
 #[utoipa::path(
@@ -61,28 +109,39 @@ pub async fn get_portfolio_by_id(
     Path(id): Path<String>,
 ) -> ApiResponse<PortfolioResponse> {
     info!("Get portfolio with id {}", id);
-    let portfolio_biz = PortfolioBiz::new(state.pool.clone());
-    let portfolio = portfolio_biz.get_by_portfolio_id(id.parse().unwrap()).await;
-    if let Err(e) = portfolio {
+    let pfl_repo = PortfolioRepo::new(state.pool.clone());
+    let pfl_row = pfl_repo.get_one_by_id(id.parse().unwrap()).await;
+    match pfl_row {
+        Err(e) => {
+            return ApiResponse::from(e);
+        }
+        Ok(None) => {
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
+        }
+        _ => {}
+    }
+    let pfl_row = pfl_row.unwrap().unwrap();
+    let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
+    let pa_rows = pa_repo.get_multi_by_portfolio_id(pfl_row.id).await;
+    if let Err(e) = pa_rows {
         return ApiResponse::from(e);
     }
-    let portfolio = portfolio.unwrap();
-    if portfolio.is_none() {
-        return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
-    }
-    let portfolio = portfolio.unwrap();
-    let asset_ids: Vec<String> = portfolio
-        .assets
-        .iter()
-        .map(|a| a.asset_id.clone())
-        .collect();
+    let pa_rows = pa_rows.unwrap();
+    let asset_ids: Vec<String> = pa_rows.iter().map(|a| a.asset_id.clone()).collect();
     let asset_repo = AssetRepo::new(state.pool.clone());
     let result = asset_repo.get_multi_by_ids(&asset_ids).await;
     if let Err(e) = result {
         return ApiResponse::from(e);
     }
     let asset_rows = result.unwrap();
-    ApiResponse::success(PortfolioResponse::from_entity(portfolio, asset_rows))
+    ApiResponse::success(PortfolioResponse {
+        id: pfl_row.id.to_string(),
+        name: pfl_row.name,
+        assets: asset_rows
+            .into_iter()
+            .map(|row| AssetResponse::from_row(row))
+            .collect(),
+    })
 }
 
 #[utoipa::path(
@@ -106,7 +165,7 @@ pub async fn get_my_portfolios(
     ApiResponse::success(BriefPortfolioListResponse {
         items: portfolios
             .into_iter()
-            .map(|portfolio| BriefPortfolioResponse::from_entity(portfolio))
+            .map(|portfolio| BriefPortfolioResponse::from_row(portfolio))
             .collect(),
     })
 }

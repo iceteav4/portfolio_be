@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 use time::OffsetDateTime;
 
-use crate::models::domain::user_session::CreateUserSession;
-use crate::models::entities::user_session::UserSession;
+use crate::models::domain::user_session::UserSession;
+use crate::models::dto::user_session::CreateUserSession;
 use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 

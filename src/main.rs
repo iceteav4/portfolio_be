@@ -77,10 +77,7 @@ async fn main() -> Result<()> {
         .nest("/health", routes::health::create_router())
         .nest("/auth", routes::auth::create_router())
         .layer(cors_layer)
-        .merge(
-            SwaggerUi::new("/swagger-ui")
-                .url("/api-docs/openapi.json", docs::api::ApiDoc::openapi()),
-        );
+        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", docs::api::ApiDoc::openapi()));
 
     let protected_routes = Router::new()
         .nest("/api", routes::api::create_router())

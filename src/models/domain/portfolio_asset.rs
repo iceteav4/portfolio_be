@@ -1,4 +1,3 @@
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -13,15 +12,15 @@ pub struct PortfolioAsset {
 }
 
 impl PortfolioAsset {
-    pub fn holding(self) -> Decimal {
-        Decimal::MIN
-    }
+    // pub fn holding(self) -> Decimal {
+    //     Decimal::MIN
+    // }
 
-    pub fn get_pnl_value(self) -> Decimal {
-        Decimal::MIN
-    }
+    // pub fn get_pnl_value(self) -> Decimal {
+    //     Decimal::MIN
+    // }
 
-    pub fn get_pnl_percent(self) -> Decimal {
-        Decimal::MIN
-    }
+    // pub fn get_pnl_percent(self) -> Decimal {
+    //     Decimal::MIN
+    // }
 }

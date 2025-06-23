@@ -22,6 +22,7 @@ where
 }
 
 /// Deserializes an ISO 8601 / RFC 3339 formatted string to an OffsetDateTime
+#[allow(unused)]
 pub fn deserialize_datetime<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
 where
     D: Deserializer<'de>,

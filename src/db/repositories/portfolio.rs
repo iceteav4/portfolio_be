@@ -1,7 +1,6 @@
 use sqlx::PgPool;
 
 use crate::models::database::portfolio::PortfolioRow;
-use crate::models::entities::portfolio::Portfolio;
 use crate::utils::error::AppError;
 use crate::utils::snowflake::SNOWFLAKE_GENERATOR;
 
@@ -13,8 +12,8 @@ impl PortfolioRepo {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
-    pub async fn create(&self, owner_id: i64, name: &str) -> Result<Portfolio, AppError> {
-        let row = sqlx::query_as!(
+    pub async fn create_one(&self, owner_id: i64, name: &str) -> Result<PortfolioRow, AppError> {
+        Ok(sqlx::query_as!(
             PortfolioRow,
             r#"
                 INSERT INTO portfolios (id, owner_id, name)
@@ -26,13 +25,11 @@ impl PortfolioRepo {
             name
         )
         .fetch_one(&self.pool)
-        .await?;
-
-        Ok(Portfolio::from_row(row))
+        .await?)
     }
 
-    pub async fn get_by_id(&self, id: i64) -> Result<Option<Portfolio>, AppError> {
-        let row = sqlx::query_as!(
+    pub async fn get_one_by_id(&self, id: i64) -> Result<Option<PortfolioRow>, AppError> {
+        Ok(sqlx::query_as!(
             PortfolioRow,
             r#"
                 SELECT id, owner_id, name, created_at, updated_at
@@ -42,16 +39,14 @@ impl PortfolioRepo {
             id
         )
         .fetch_optional(&self.pool)
-        .await?;
-
-        match row {
-            Some(row) => Ok(Some(Portfolio::from_row(row))),
-            None => Ok(None),
-        }
+        .await?)
     }
 
-    pub async fn get_multi_by_owner_id(&self, owner_id: i64) -> Result<Vec<Portfolio>, AppError> {
-        let rows = sqlx::query_as!(
+    pub async fn get_multi_by_owner_id(
+        &self,
+        owner_id: i64,
+    ) -> Result<Vec<PortfolioRow>, AppError> {
+        Ok(sqlx::query_as!(
             PortfolioRow,
             r#"
                 SELECT id, owner_id, name, created_at, updated_at
@@ -61,11 +56,6 @@ impl PortfolioRepo {
             owner_id
         )
         .fetch_all(&self.pool)
-        .await?;
-
-        Ok(rows
-            .into_iter()
-            .map(|row| Portfolio::from_row(row))
-            .collect::<Vec<Portfolio>>())
+        .await?)
     }
 }

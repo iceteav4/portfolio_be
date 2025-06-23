@@ -18,6 +18,10 @@ use crate::models::dto;
         handlers::users::get_user_by_id,
         handlers::users::get_user_me,
 
+        // Asset endpoints
+        handlers::assets::get_all_assets,
+        handlers::assets::create_asset,
+
         // Portfolio endpoints
         handlers::portfolios::create_portfolio,
         handlers::portfolios::get_portfolio_by_id,
@@ -30,6 +34,8 @@ use crate::models::dto;
     components(
         // List your schema components here
         schemas(
+            dto::asset::AssetResponse,
+            dto::asset::AssetListResponse,
             dto::auth::LoginWithPasswordRequest,
             dto::auth::SignUpWithPasswordRequest,
             dto::auth::AuthResponse,
@@ -38,8 +44,8 @@ use crate::models::dto;
             dto::portfolio::BriefPortfolioListResponse,
             dto::user::UserResponse,
             dto::user::UserMeResponse,
-            dto::id_response::IdResponse,
             dto::api_response::GeneralResponse,
+            dto::api_response::IdResponse,
             dto::health::HealthResponse,
             dto::coingecko::CoinDataResponse,
         )
@@ -49,6 +55,7 @@ use crate::models::dto;
         (name = "auth", description = "Authentication endpoints"),
         (name = "users", description = "User endpoints"),
         (name = "portfolios", description = "Portfolio endpoints"),
+        (name = "assets", description = "Asset endpoints"),
         (name = "imports", description = "Import endpoints")
     )
 )]

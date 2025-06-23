@@ -6,11 +6,11 @@ use tracing::info;
 use crate::{
     db::repositories::user::UserRepo,
     middleware::auth::create_token,
-    models::{
-        domain::user::CreateUser,
-        domain::user_session::CreateUserSession,
-        dto::api_response::ApiResponse,
-        dto::auth::{AuthResponse, LoginWithPasswordRequest, SignUpWithPasswordRequest},
+    models::dto::{
+        api_response::ApiResponse,
+        auth::{AuthResponse, LoginWithPasswordRequest, SignUpWithPasswordRequest},
+        user::CreateUser,
+        user_session::CreateUserSession,
     },
     state::AppState,
 };

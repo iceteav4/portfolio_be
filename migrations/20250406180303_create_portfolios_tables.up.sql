@@ -1,28 +1,16 @@
 -- Add up migration script here
--- Create assets table to store common asset attributes
+-- Create assets table
 CREATE TABLE assets (
     id VARCHAR(50) PRIMARY KEY,
     asset_type VARCHAR(20) NOT NULL,
+    external_id VARCHAR(50) NOT NULL,
     source VARCHAR(50) NOT NULL,
     symbol VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     image JSONB NOT NULL,
+    ext JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create crypto_assets table extending assets
-CREATE TABLE IF NOT EXISTS crypto_assets (
-    asset_id VARCHAR(50) PRIMARY KEY REFERENCES assets (id),
-    external_id VARCHAR(50) NOT NULL,
-    platform_contract_map JSONB NOT NULL DEFAULT '{}'
-);
-
--- Create stock_assets table extending assets
-CREATE TABLE stock_assets (
-    asset_id VARCHAR(50) PRIMARY KEY REFERENCES assets (id),
-    external_id VARCHAR(50) NOT NULL
-    -- Add any stock-specific fields here
 );
 
 -- Create portfolios table
