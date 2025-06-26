@@ -5,6 +5,7 @@ use axum::{
     extract::{Query, State},
 };
 
+use crate::biz::asset::generate_asset_id;
 use crate::models::dto::api_response::IdResponse;
 use crate::{
     db::repositories::asset::AssetRepo,
@@ -52,7 +53,7 @@ pub async fn get_all_assets(
     return ApiResponse::success(AssetListResponse {
         items: assets
             .into_iter()
-            .map(|item| AssetResponse::from_asset_row(item))
+            .map(|item| AssetResponse::from_db_row(item))
             .collect(),
     });
 }
@@ -85,6 +86,18 @@ pub async fn create_asset(
     }
     let coin_data = cg_res.unwrap();
     let asset_repo = AssetRepo::new(state.pool.clone());
+    let asset_id = generate_asset_id(&AssetType::Crypto, &coin_data.id);
+    let existed_asset = asset_repo.get_one_by_id(&asset_id).await;
+    match existed_asset {
+        Err(e) => return ApiResponse::from(e),
+        Ok(Some(_)) => {
+            return ApiResponse::<IdResponse>::error(
+                StatusCode::BAD_REQUEST,
+                "Asset already exists",
+            );
+        }
+        Ok(None) => (),
+    }
     let result = asset_repo
         .create_one(CreateAssetRepo::from_coin_data(coin_data))
         .await;

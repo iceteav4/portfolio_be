@@ -20,17 +20,7 @@ pub struct AssetResponse {
 }
 
 impl AssetResponse {
-    pub fn from_row(row: AssetRow) -> Self {
-        Self {
-            id: row.id,
-            asset_type: row.asset_type.parse().unwrap(),
-            symbol: row.symbol,
-            name: row.name,
-            image: serde_json::from_value(row.image.clone()).unwrap(),
-        }
-    }
-
-    pub fn from_asset_row(row: AssetRow) -> Self {
+    pub fn from_db_row(row: AssetRow) -> Self {
         Self {
             id: row.id.to_string(),
             asset_type: row.asset_type.parse().unwrap(),

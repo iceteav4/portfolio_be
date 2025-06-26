@@ -2,6 +2,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
+use utoipa::ToSchema;
 
 use crate::{
     models::{common::currency::Currency, database::transaction::TransactionRow},
@@ -10,7 +11,7 @@ use crate::{
 
 use super::coingecko::RawTransaction;
 
-#[derive(Debug, Serialize, Deserialize, EnumString, Display)]
+#[derive(Debug, Serialize, Deserialize, EnumString, Display, ToSchema)]
 #[strum(serialize_all = "lowercase")]
 pub enum TxType {
     Buy,

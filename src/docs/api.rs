@@ -24,6 +24,7 @@ use crate::models::dto;
 
         // Portfolio endpoints
         handlers::portfolios::create_portfolio,
+        handlers::portfolios::create_portfolio_asset,
         handlers::portfolios::get_portfolio_by_id,
         handlers::portfolios::get_my_portfolios,
 
@@ -40,6 +41,7 @@ use crate::models::dto;
             dto::auth::SignUpWithPasswordRequest,
             dto::auth::AuthResponse,
             dto::portfolio::CreatePortfolioRequest,
+            dto::portfolio::CreatePortfolioAssetRequest,
             dto::portfolio::PortfolioResponse,
             dto::portfolio::BriefPortfolioListResponse,
             dto::user::UserResponse,

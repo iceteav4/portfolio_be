@@ -13,10 +13,9 @@ use crate::{
         domain::auth::Claims,
         dto::{
             api_response::{ApiResponse, GeneralResponse, IdResponse},
-            asset::AssetResponse,
             portfolio::{
                 BriefPortfolioListResponse, BriefPortfolioResponse, CreatePortfolioAssetRequest,
-                CreatePortfolioRequest, PortfolioResponse,
+                CreatePortfolioRequest, PortfolioAssetResponse, PortfolioResponse,
             },
         },
     },
@@ -60,18 +59,19 @@ pub async fn create_portfolio(
 pub async fn create_portfolio_asset(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
+    Path(portfolio_id): Path<String>,
     Json(req): Json<CreatePortfolioAssetRequest>,
 ) -> ApiResponse<GeneralResponse> {
     let pfl_repo = PortfolioRepo::new(state.pool.clone());
-    let pfl_row = pfl_repo.get_one_by_id(req.portfolio_id).await;
-    if let Err(e) = pfl_row {
-        return ApiResponse::from(e);
-    }
-    let pfl_row = pfl_row.unwrap();
-    if pfl_row.is_none() {
-        return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
-    }
-    let pfl_row = pfl_row.unwrap();
+    let pfl_id: i64 = portfolio_id.parse().unwrap();
+    let pfl_rs = pfl_repo.get_one_by_id(pfl_id).await;
+    let pfl_row = match pfl_rs {
+        Err(e) => return ApiResponse::from(e),
+        Ok(None) => {
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
+        }
+        Ok(Some(pfl_row)) => pfl_row,
+    };
     if pfl_row.owner_id != claims.user_id {
         return ApiResponse::error(
             StatusCode::FORBIDDEN,
@@ -79,17 +79,27 @@ pub async fn create_portfolio_asset(
         );
     }
     let asset_repo = AssetRepo::new(state.pool.clone());
-    let asset = asset_repo.get_one_by_id(&req.asset_id).await;
-    if let Err(e) = asset {
-        return ApiResponse::from(e);
-    }
-    let asset = asset.unwrap();
-    if asset.is_none() {
-        return ApiResponse::error(StatusCode::NOT_FOUND, "Asset not found".to_string());
-    }
+    let asset_rs = asset_repo.get_one_by_id(&req.asset_id).await;
+    match asset_rs {
+        Err(e) => return ApiResponse::from(e),
+        Ok(None) => {
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Asset not found".to_string());
+        }
+        Ok(Some(asset_row)) => asset_row,
+    };
 
     let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
-    let pa_row = pa_repo.create(req.portfolio_id, &req.asset_id).await;
+    let pa_rs = pa_repo
+        .get_one_by_portfolio_id_and_asset_id(pfl_id, &req.asset_id)
+        .await;
+    match pa_rs {
+        Err(e) => return ApiResponse::from(e),
+        Ok(Some(_)) => {
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio asset already exists");
+        }
+        _ => (),
+    };
+    let pa_row = pa_repo.create(pfl_id, &req.asset_id).await;
     if let Err(e) = pa_row {
         return ApiResponse::from(e);
     }
@@ -110,36 +120,33 @@ pub async fn get_portfolio_by_id(
 ) -> ApiResponse<PortfolioResponse> {
     info!("Get portfolio with id {}", id);
     let pfl_repo = PortfolioRepo::new(state.pool.clone());
-    let pfl_row = pfl_repo.get_one_by_id(id.parse().unwrap()).await;
-    match pfl_row {
-        Err(e) => {
-            return ApiResponse::from(e);
-        }
+    let pfl_rs = pfl_repo.get_one_by_id(id.parse().unwrap()).await;
+    let pfl_row = match pfl_rs {
+        Err(e) => return ApiResponse::from(e),
         Ok(None) => {
-            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found");
         }
-        _ => {}
-    }
-    let pfl_row = pfl_row.unwrap().unwrap();
+        Ok(Some(row)) => row,
+    };
     let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
-    let pa_rows = pa_repo.get_multi_by_portfolio_id(pfl_row.id).await;
-    if let Err(e) = pa_rows {
-        return ApiResponse::from(e);
-    }
-    let pa_rows = pa_rows.unwrap();
+    let pa_rs = pa_repo.get_multi_by_portfolio_id(pfl_row.id).await;
+    let pa_rows = match pa_rs {
+        Err(e) => return ApiResponse::from(e),
+        Ok(rows) => rows,
+    };
     let asset_ids: Vec<String> = pa_rows.iter().map(|a| a.asset_id.clone()).collect();
     let asset_repo = AssetRepo::new(state.pool.clone());
-    let result = asset_repo.get_multi_by_ids(&asset_ids).await;
-    if let Err(e) = result {
-        return ApiResponse::from(e);
-    }
-    let asset_rows = result.unwrap();
+    let assets_rs = asset_repo.get_multi_by_ids(&asset_ids).await;
+    let asset_rows = match assets_rs {
+        Err(e) => return ApiResponse::from(e),
+        Ok(rows) => rows,
+    };
     ApiResponse::success(PortfolioResponse {
         id: pfl_row.id.to_string(),
         name: pfl_row.name,
         assets: asset_rows
             .into_iter()
-            .map(|row| AssetResponse::from_row(row))
+            .map(|asset| PortfolioAssetResponse::from_db_rows(asset, Vec::new()))
             .collect(),
     })
 }
