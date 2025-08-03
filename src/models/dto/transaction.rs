@@ -8,6 +8,7 @@ use crate::models::{
     database::transaction::TransactionRow,
     domain::transaction::{BaseTransactionInfo, TxType},
 };
+use crate::utils::datetime::serialize_datetime;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTransaction {
@@ -47,6 +48,7 @@ pub struct TransactionResponse {
     pub portfolio_id: i64,
     pub asset_id: String,
     pub fees: String,
+    #[serde(serialize_with = "serialize_datetime")]
     pub executed_at: OffsetDateTime,
     pub notes: Option<String>,
     pub currency: Currency,

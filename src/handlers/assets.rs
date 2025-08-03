@@ -7,6 +7,7 @@ use axum::{
 
 use crate::biz::asset::generate_asset_id;
 use crate::models::dto::api_response::IdResponse;
+use crate::to_api_res;
 use crate::{
     db::repositories::asset::AssetRepo,
     models::{
@@ -26,9 +27,9 @@ use crate::{
 #[utoipa::path(
     get,
     path = "/api/assets",
+    params(AssetQueryParams),
     responses(
-        (status = 200, description = "Success", body = ApiResponse<AssetListResponse>),
-        (status = 500, description = "Internal server error")
+        (status = 200, description = "Success", body = ApiResponse<AssetListResponse>)
     )
 )]
 pub async fn get_all_assets(
@@ -37,19 +38,13 @@ pub async fn get_all_assets(
     Query(params): Query<AssetQueryParams>,
 ) -> ApiResponse<AssetListResponse> {
     let asset_repo = AssetRepo::new(state.pool.clone());
-    let page = params.page.unwrap_or(1);
-    let limit = params.limit.unwrap_or(50);
-    let asset_type = match params.asset_type {
-        Some(s) => Some(s.to_string()),
-        None => None,
-    };
-    let assets = asset_repo
-        .get_multi_with_paging(asset_type, page, limit)
-        .await;
-    if let Err(err) = assets {
-        return ApiResponse::from(err);
-    }
-    let assets = assets.unwrap();
+    let limit = params.pagination.limit.unwrap_or(50);
+    let asset_type = params.asset_type.map(|t| t.to_string());
+    let assets = to_api_res!(
+        asset_repo
+            .get_multi_with_cursor(asset_type, params.pagination.after, limit)
+            .await
+    );
     return ApiResponse::success(AssetListResponse {
         items: assets
             .into_iter()
@@ -76,15 +71,13 @@ pub async fn create_asset(
     if req.asset_type != AssetType::Crypto {
         return ApiResponse::error(StatusCode::BAD_REQUEST, "Invalid asset type".to_string());
     }
-    let cg_res = state
-        .clients
-        .coingecko
-        .get_coin_data(&req.external_id)
-        .await;
-    if let Err(e) = cg_res {
-        return ApiResponse::from(e);
-    }
-    let coin_data = cg_res.unwrap();
+    let coin_data = to_api_res!(
+        state
+            .clients
+            .coingecko
+            .get_coin_data(&req.external_id)
+            .await
+    );
     let asset_repo = AssetRepo::new(state.pool.clone());
     let asset_id = generate_asset_id(&AssetType::Crypto, &coin_data.id);
     let existed_asset = asset_repo.get_one_by_id(&asset_id).await;
@@ -98,12 +91,10 @@ pub async fn create_asset(
         }
         Ok(None) => (),
     }
-    let result = asset_repo
-        .create_one(CreateAssetRepo::from_coin_data(coin_data))
-        .await;
-    if let Err(e) = result {
-        return ApiResponse::from(e);
-    }
-    let asset_id = result.unwrap();
+    let asset_id = to_api_res!(
+        asset_repo
+            .create_one(CreateAssetRepo::from_coin_data(coin_data))
+            .await
+    );
     return ApiResponse::success(IdResponse { id: asset_id });
 }

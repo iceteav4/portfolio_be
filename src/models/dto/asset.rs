@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::models::{
     common::asset::{AssetExt, AssetImage, AssetType, CryptoExt},
     database::asset::AssetRow,
 };
 
-use super::coingecko::CoinDataResponse;
+use super::{coingecko::CoinDataResponse, paging_response::CursorPaginationQuery};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AssetResponse {
@@ -31,11 +31,11 @@ impl AssetResponse {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct AssetQueryParams {
+    #[serde(flatten)]
+    pub pagination: CursorPaginationQuery,
     pub asset_type: Option<AssetType>,
-    pub page: Option<u32>,
-    pub limit: Option<u32>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]

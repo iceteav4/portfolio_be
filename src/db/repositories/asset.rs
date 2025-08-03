@@ -66,33 +66,32 @@ impl AssetRepo {
         .await?)
     }
 
-    pub async fn get_multi_with_paging(
+    pub async fn get_multi_with_cursor(
         &self,
         asset_type: Option<String>,
-        page: u32,
+        after_id: Option<String>,
         limit: u32,
     ) -> Result<Vec<AssetRow>, AppError> {
-        let offset = ((page - 1) * limit) as i64;
         let limit = limit as i64;
 
         let mut query_builder = sqlx::QueryBuilder::new(
             "SELECT id, asset_type, external_id, source, symbol, name, image, ext, created_at, updated_at FROM assets",
         );
 
-        // Add WHERE clause if asset_type is provided
         if let Some(asset_type) = asset_type {
             query_builder
                 .push(" WHERE asset_type = ")
                 .push_bind(asset_type);
         }
 
+        if let Some(after_id) = after_id {
+            query_builder.push(" AND id > ").push_bind(after_id);
+        }
+
         // Add ORDER BY, LIMIT, and OFFSET
         query_builder
             .push(" ORDER BY created_at DESC LIMIT ")
-            .push_bind(limit)
-            .push(" OFFSET ")
-            .push_bind(offset);
-
+            .push_bind(limit);
         Ok(query_builder
             .build_query_as::<AssetRow>()
             .fetch_all(&self.pool)

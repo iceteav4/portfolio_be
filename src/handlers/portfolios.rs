@@ -8,6 +8,7 @@ use tracing::info;
 use crate::{
     db::repositories::{
         asset::AssetRepo, portfolio::PortfolioRepo, portfolio_asset::PortfolioAssetRepo,
+        transaction::TransactionRepo,
     },
     models::{
         domain::auth::Claims,
@@ -20,7 +21,7 @@ use crate::{
         },
     },
     state::AppState,
-    try_api_response,
+    to_api_res,
 };
 
 #[utoipa::path(
@@ -69,14 +70,14 @@ pub async fn create_portfolio_asset(
     let pfl_row = match pfl_rs {
         Err(e) => return ApiResponse::from(e),
         Ok(None) => {
-            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found".to_string());
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Portfolio not found");
         }
         Ok(Some(pfl_row)) => pfl_row,
     };
     if pfl_row.owner_id != claims.user_id {
         return ApiResponse::error(
             StatusCode::FORBIDDEN,
-            "You are not the owner of this portfolio".to_string(),
+            "You are not the owner of this portfolio",
         );
     }
     let asset_repo = AssetRepo::new(state.pool.clone());
@@ -84,7 +85,7 @@ pub async fn create_portfolio_asset(
     match asset_rs {
         Err(e) => return ApiResponse::from(e),
         Ok(None) => {
-            return ApiResponse::error(StatusCode::NOT_FOUND, "Asset not found".to_string());
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Asset not found");
         }
         Ok(Some(asset_row)) => asset_row,
     };
@@ -100,7 +101,7 @@ pub async fn create_portfolio_asset(
         }
         _ => (),
     };
-    try_api_response!(pa_repo.create(pfl_id, &req.asset_id).await);
+    to_api_res!(pa_repo.create(pfl_id, &req.asset_id).await);
     return ApiResponse::<GeneralResponse>::success_general_response();
 }
 
@@ -127,17 +128,24 @@ pub async fn get_portfolio_by_id(
         Ok(Some(row)) => row,
     };
     let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
-    let pa_rows = try_api_response!(pa_repo.get_multi_by_portfolio_id(pfl_row.id).await);
+    let pa_rows = to_api_res!(pa_repo.get_multi_by_portfolio_id(pfl_row.id).await);
     let asset_ids: Vec<String> = pa_rows.iter().map(|a| a.asset_id.clone()).collect();
     let asset_repo = AssetRepo::new(state.pool.clone());
-    let asset_rows = try_api_response!(asset_repo.get_multi_by_ids(&asset_ids).await);
+    let asset_rows = to_api_res!(asset_repo.get_multi_by_ids(&asset_ids).await);
+    let tx_repo = TransactionRepo::new(state.pool.clone());
+    let mut assets_res: Vec<PortfolioAssetResponse> = Vec::new();
+    for asset_row in asset_rows {
+        let tx_rows = to_api_res!(
+            tx_repo
+                .get_multi_txs_by_portfolio_id_asset_id(pfl_row.id, &asset_row.id)
+                .await
+        );
+        assets_res.push(PortfolioAssetResponse::from_db_rows(asset_row, tx_rows));
+    }
     ApiResponse::success(PortfolioResponse {
         id: pfl_row.id.to_string(),
         name: pfl_row.name,
-        assets: asset_rows
-            .into_iter()
-            .map(|asset| PortfolioAssetResponse::from_db_rows(asset, Vec::new()))
-            .collect(),
+        assets: assets_res,
     })
 }
 
@@ -154,7 +162,7 @@ pub async fn get_my_portfolios(
     Extension(claims): Extension<Claims>,
 ) -> ApiResponse<BriefPortfolioListResponse> {
     let portfolio_repo = PortfolioRepo::new(state.pool.clone());
-    let portfolios = try_api_response!(portfolio_repo.get_multi_by_owner_id(claims.user_id).await);
+    let portfolios = to_api_res!(portfolio_repo.get_multi_by_owner_id(claims.user_id).await);
     ApiResponse::success(BriefPortfolioListResponse {
         items: portfolios
             .into_iter()

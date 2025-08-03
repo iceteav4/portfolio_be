@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! try_api_response {
+macro_rules! to_api_res {
     ($expr:expr) => {
         match $expr {
             Ok(val) => val,

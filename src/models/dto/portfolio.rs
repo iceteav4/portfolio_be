@@ -29,14 +29,14 @@ pub struct PortfolioAssetResponse {
 }
 
 impl PortfolioAssetResponse {
-    pub fn from_db_rows(asset_row: AssetRow, transaction: Vec<TransactionRow>) -> Self {
+    pub fn from_db_rows(asset_row: AssetRow, tx_rows: Vec<TransactionRow>) -> Self {
         Self {
             id: asset_row.id.to_string(),
             asset_type: asset_row.asset_type.parse().unwrap(),
             symbol: asset_row.symbol,
             name: asset_row.name,
             image: serde_json::from_value(asset_row.image).unwrap(),
-            transactions: transaction
+            transactions: tx_rows
                 .into_iter()
                 .map(TransactionResponse::from_db_row)
                 .collect(),

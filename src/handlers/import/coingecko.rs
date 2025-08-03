@@ -19,13 +19,12 @@ use crate::{
         domain::{auth::Claims, coingecko::RawTransaction, transaction::BaseTransactionInfo},
         dto::{
             api_response::{ApiResponse, GeneralResponse},
-            asset::CreateAssetRepo,
             coingecko::CoinDataResponse,
             transaction::{CreateMultiTransaction, UpdateTransaction},
         },
     },
     state::AppState,
-    try_api_response,
+    to_api_res,
 };
 
 #[utoipa::path(
@@ -181,22 +180,14 @@ pub async fn import_portfolio_file(
             return ApiResponse::from(e);
         }
     }
-    let coin_data = try_api_response!(state.clients.coingecko.get_coin_data(&coin_id).await);
+    let coin_data = to_api_res!(state.clients.coingecko.get_coin_data(&coin_id).await);
     // create new asset if needed
     let asset_id = generate_asset_id(&AssetType::Crypto, &coin_data.id);
     let existed_asset = asset_repo.get_one_by_id(&asset_id).await;
     match existed_asset {
         Err(e) => return ApiResponse::from(e),
         Ok(None) => {
-            info!(
-                "Asset does not exist, create new crypto asset with id {}",
-                asset_id
-            );
-            try_api_response!(
-                asset_repo
-                    .create_one(CreateAssetRepo::from_coin_data(coin_data))
-                    .await
-            );
+            return ApiResponse::error(StatusCode::BAD_REQUEST, "Asset does not exist");
         }
         Ok(Some(_)) => (),
     }
@@ -207,23 +198,15 @@ pub async fn import_portfolio_file(
         .await;
     match exist_pa {
         Err(e) => {
-            info!(
-                "Failed to checking exist portfolio_id {} and asset_id {}",
-                portfolio_id, &asset_id
-            );
             return ApiResponse::from(e);
         }
         Ok(None) => {
-            info!(
-                "Portfolio asset not found, create new with portfolio id {}, asset id {}",
-                portfolio_id, asset_id
-            );
-            try_api_response!(pa_repo.create(portfolio_id, &asset_id).await);
+            return ApiResponse::error(StatusCode::BAD_REQUEST, "Portfolio asset does not exist");
         }
         _ => {}
     }
     // save txs when have new tx
-    let all_pa_txs = try_api_response!(
+    let all_pa_txs = to_api_res!(
         tx_repo
             .get_multi_txs_by_portfolio_id_asset_id(portfolio_id, &asset_id)
             .await
@@ -234,7 +217,7 @@ pub async fn import_portfolio_file(
         .collect();
     let mut new_txs = Vec::new();
     for raw_tx in new_raw_txs.into_iter() {
-        let base_tx_info = try_api_response!(BaseTransactionInfo::from_raw_tx(raw_tx));
+        let base_tx_info = to_api_res!(BaseTransactionInfo::from_raw_tx(raw_tx));
         if base_tx_info.external_id.is_none() {
             return ApiResponse::error(
                 StatusCode::BAD_REQUEST,
@@ -252,7 +235,7 @@ pub async fn import_portfolio_file(
                 fees: Some(base_tx_info.fees),
                 executed_at: Some(base_tx_info.executed_at),
             };
-            try_api_response!(tx_repo.update_tx_by_id(tx.id, update_tx).await);
+            to_api_res!(tx_repo.update_tx_by_id(tx.id, update_tx).await);
         } else {
             new_txs.push(base_tx_info);
         }
@@ -262,7 +245,7 @@ pub async fn import_portfolio_file(
         asset_id,
         transactions: new_txs,
     };
-    let new_txs = try_api_response!(tx_repo.create_multi_txs(create_multi_txs).await);
+    let new_txs = to_api_res!(tx_repo.create_multi_txs(create_multi_txs).await);
     info!("Total transactions created: {}", new_txs);
 
     return ApiResponse::<GeneralResponse>::success_general_response();
