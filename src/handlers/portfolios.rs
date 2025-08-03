@@ -20,6 +20,7 @@ use crate::{
         },
     },
     state::AppState,
+    try_api_response,
 };
 
 #[utoipa::path(
@@ -99,10 +100,7 @@ pub async fn create_portfolio_asset(
         }
         _ => (),
     };
-    let pa_row = pa_repo.create(pfl_id, &req.asset_id).await;
-    if let Err(e) = pa_row {
-        return ApiResponse::from(e);
-    }
+    try_api_response!(pa_repo.create(pfl_id, &req.asset_id).await);
     return ApiResponse::<GeneralResponse>::success_general_response();
 }
 
@@ -129,18 +127,10 @@ pub async fn get_portfolio_by_id(
         Ok(Some(row)) => row,
     };
     let pa_repo = PortfolioAssetRepo::new(state.pool.clone());
-    let pa_rs = pa_repo.get_multi_by_portfolio_id(pfl_row.id).await;
-    let pa_rows = match pa_rs {
-        Err(e) => return ApiResponse::from(e),
-        Ok(rows) => rows,
-    };
+    let pa_rows = try_api_response!(pa_repo.get_multi_by_portfolio_id(pfl_row.id).await);
     let asset_ids: Vec<String> = pa_rows.iter().map(|a| a.asset_id.clone()).collect();
     let asset_repo = AssetRepo::new(state.pool.clone());
-    let assets_rs = asset_repo.get_multi_by_ids(&asset_ids).await;
-    let asset_rows = match assets_rs {
-        Err(e) => return ApiResponse::from(e),
-        Ok(rows) => rows,
-    };
+    let asset_rows = try_api_response!(asset_repo.get_multi_by_ids(&asset_ids).await);
     ApiResponse::success(PortfolioResponse {
         id: pfl_row.id.to_string(),
         name: pfl_row.name,
@@ -164,11 +154,7 @@ pub async fn get_my_portfolios(
     Extension(claims): Extension<Claims>,
 ) -> ApiResponse<BriefPortfolioListResponse> {
     let portfolio_repo = PortfolioRepo::new(state.pool.clone());
-    let portfolios = portfolio_repo.get_multi_by_owner_id(claims.user_id).await;
-    if let Err(e) = portfolios {
-        return ApiResponse::from(e);
-    }
-    let portfolios = portfolios.unwrap();
+    let portfolios = try_api_response!(portfolio_repo.get_multi_by_owner_id(claims.user_id).await);
     ApiResponse::success(BriefPortfolioListResponse {
         items: portfolios
             .into_iter()
