@@ -27,6 +27,13 @@ CREATE TABLE portfolio_assets (
     portfolio_id BIGINT NOT NULL REFERENCES portfolios (id),
     asset_id VARCHAR(50) NOT NULL REFERENCES assets (id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    holding_amount DECIMAL NOT NULL DEFAULT 0,
+    total_cost DECIMAL NOT NULL DEFAULT 0,
+    avg_buy_price DECIMAL NOT NULL DEFAULT 0,
+    sold_amount DECIMAL NOT NULL DEFAULT 0,
+    total_revenue DECIMAL NOT NULL DEFAULT 0,
+    avg_sell_price DECIMAL NOT NULL DEFAULT 0,
     PRIMARY KEY (portfolio_id, asset_id)
 );
 

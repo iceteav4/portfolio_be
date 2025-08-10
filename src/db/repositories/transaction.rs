@@ -72,12 +72,14 @@ impl TransactionRepo {
         &self,
         portfolio_id: i64,
         asset_id: &str,
+        limit: u32,
     ) -> Result<Vec<TransactionRow>, AppError> {
         Ok(sqlx::query_as!(
             TransactionRow,
-            r#"SELECT * FROM transactions WHERE portfolio_id = $1 AND asset_id = $2"#,
+            r#"SELECT * FROM transactions WHERE portfolio_id = $1 AND asset_id = $2 ORDER BY executed_at DESC LIMIT $3"#,
             portfolio_id,
-            asset_id
+            asset_id,
+            limit as i32
         )
         .fetch_all(&self.pool)
         .await?)
@@ -94,32 +96,38 @@ impl TransactionRepo {
         let mut need_update = false;
 
         if let Some(tx_type) = inp.tx_type {
-            separated.push("tx_type = ").push_bind(tx_type.to_string());
+            separated
+                .push("tx_type = ")
+                .push_bind_unseparated(tx_type.to_string());
             need_update = true;
         }
 
         if let Some(ref notes) = inp.notes {
-            separated.push("notes = ").push_bind(notes);
+            separated.push("notes = ").push_bind_unseparated(notes);
             need_update = true;
         }
 
         if let Some(quantity) = inp.quantity {
-            separated.push("quantity = ").push_bind(quantity);
+            separated
+                .push("quantity = ")
+                .push_bind_unseparated(quantity);
             need_update = true;
         }
 
         if let Some(price) = inp.price {
-            separated.push("price = ").push_bind(price);
+            separated.push("price = ").push_bind_unseparated(price);
             need_update = true;
         }
 
         if let Some(fees) = inp.fees {
-            separated.push("fees = ").push_bind(fees);
+            separated.push("fees = ").push_bind_unseparated(fees);
             need_update = true;
         }
 
         if let Some(executed_at) = inp.executed_at {
-            separated.push("executed_at = ").push_bind(executed_at);
+            separated
+                .push("executed_at = ")
+                .push_bind_unseparated(executed_at);
             need_update = true;
         }
 
@@ -130,7 +138,7 @@ impl TransactionRepo {
 
         separated
             .push("updated_at = ")
-            .push_bind(OffsetDateTime::now_utc());
+            .push_bind_unseparated(OffsetDateTime::now_utc());
 
         query_builder.push(" WHERE id = ").push_bind(tx_id);
 

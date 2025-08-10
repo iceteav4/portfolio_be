@@ -1,23 +1,28 @@
+use std::collections::HashMap;
+
 use axum::{
     Extension, Json,
     extract::{Path, State},
     http::StatusCode,
 };
+use rust_decimal::Decimal;
 use tracing::info;
 
 use crate::{
     db::repositories::{
         asset::AssetRepo, portfolio::PortfolioRepo, portfolio_asset::PortfolioAssetRepo,
-        transaction::TransactionRepo,
     },
     models::{
+        common::currency::Currency,
+        database::asset::AssetRow,
         domain::auth::Claims,
         dto::{
             api_response::{ApiResponse, GeneralResponse, IdResponse},
             portfolio::{
-                BriefPortfolioListResponse, BriefPortfolioResponse, CreatePortfolioAssetRequest,
-                CreatePortfolioRequest, PortfolioAssetResponse, PortfolioResponse,
+                BriefPortfolioListResponse, BriefPortfolioResponse, CreatePortfolioRequest,
+                PortfolioResponse,
             },
+            portfolio_asset::{CreatePortfolioAssetRequest, PortfolioAssetResponse},
         },
     },
     state::AppState,
@@ -132,15 +137,29 @@ pub async fn get_portfolio_by_id(
     let asset_ids: Vec<String> = pa_rows.iter().map(|a| a.asset_id.clone()).collect();
     let asset_repo = AssetRepo::new(state.pool.clone());
     let asset_rows = to_api_res!(asset_repo.get_multi_by_ids(&asset_ids).await);
-    let tx_repo = TransactionRepo::new(state.pool.clone());
+    let asset_id_to_row: HashMap<String, AssetRow> =
+        asset_rows.into_iter().map(|a| (a.id.clone(), a)).collect();
+
     let mut assets_res: Vec<PortfolioAssetResponse> = Vec::new();
-    for asset_row in asset_rows {
-        let tx_rows = to_api_res!(
-            tx_repo
-                .get_multi_txs_by_portfolio_id_asset_id(pfl_row.id, &asset_row.id)
+    for pa_row in pa_rows {
+        let asset_row = asset_id_to_row.get(&pa_row.asset_id).unwrap();
+        let coin_data = to_api_res!(
+            state
+                .clients
+                .coingecko
+                .get_coin_data(&asset_row.external_id)
                 .await
         );
-        assets_res.push(PortfolioAssetResponse::from_db_rows(asset_row, tx_rows));
+        let current_price: Decimal = coin_data
+            .get_current_price(Currency::USD)
+            .map(Decimal::from_f64_retain)
+            .flatten()
+            .unwrap_or(Decimal::ZERO);
+        assets_res.push(PortfolioAssetResponse::from_db_row(
+            asset_row,
+            &pa_row,
+            current_price,
+        ));
     }
     ApiResponse::success(PortfolioResponse {
         id: pfl_row.id.to_string(),

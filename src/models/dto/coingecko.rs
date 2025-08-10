@@ -1,4 +1,7 @@
-use crate::{models::common::asset::AssetImage, utils::coingecko::filter_market_data_by_currency};
+use crate::{
+    models::common::{asset::AssetImage, currency::Currency},
+    utils::coingecko::filter_market_data_by_currency,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
@@ -32,4 +35,13 @@ pub struct CoinDataResponse {
     pub platforms: Option<HashMap<String, String>>,
     pub image: AssetImage,
     pub market_data: MarketData,
+}
+
+impl CoinDataResponse {
+    pub fn get_current_price(&self, currency: Currency) -> Option<f64> {
+        self.market_data
+            .current_price
+            .get(&currency.to_string())
+            .copied()
+    }
 }

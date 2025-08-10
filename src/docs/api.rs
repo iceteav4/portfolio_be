@@ -41,15 +41,18 @@ use crate::models::dto;
             dto::auth::SignUpWithPasswordRequest,
             dto::auth::AuthResponse,
             dto::portfolio::CreatePortfolioRequest,
-            dto::portfolio::CreatePortfolioAssetRequest,
             dto::portfolio::PortfolioResponse,
             dto::portfolio::BriefPortfolioListResponse,
+            dto::portfolio_asset::CreatePortfolioAssetRequest,
+            dto::portfolio_asset::PortfolioAssetResponse,
             dto::user::UserResponse,
             dto::user::UserMeResponse,
             dto::api_response::GeneralResponse,
             dto::api_response::IdResponse,
             dto::health::HealthResponse,
             dto::coingecko::CoinDataResponse,
+            dto::transaction::TransactionResponse,
+            dto::transaction::TransactionListResponse
         )
     ),
     tags(
@@ -57,6 +60,7 @@ use crate::models::dto;
         (name = "auth", description = "Authentication endpoints"),
         (name = "users", description = "User endpoints"),
         (name = "portfolios", description = "Portfolio endpoints"),
+        (name = "transactions", description = "Transaction endpoints"),
         (name = "assets", description = "Asset endpoints"),
         (name = "imports", description = "Import endpoints")
     )

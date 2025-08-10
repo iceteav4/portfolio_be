@@ -90,7 +90,7 @@ impl AssetRepo {
 
         // Add ORDER BY, LIMIT, and OFFSET
         query_builder
-            .push(" ORDER BY created_at DESC LIMIT ")
+            .push(" ORDER BY id ASC LIMIT ")
             .push_bind(limit);
         Ok(query_builder
             .build_query_as::<AssetRow>()

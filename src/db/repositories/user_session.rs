@@ -18,7 +18,7 @@ impl UserSessionRepo {
 
     pub async fn create_user_session(
         &self,
-        session: CreateUserSession,
+        inp: CreateUserSession,
     ) -> Result<UserSession, AppError> {
         let entity = sqlx::query_as!(
             UserSession,
@@ -28,10 +28,10 @@ impl UserSessionRepo {
             RETURNING session_id, user_id, is_active, created_at, expires_at
             "#,
             SNOWFLAKE_GENERATOR.generate().unwrap() as i64,
-            session.user_id,
+            inp.user_id,
             true,
             OffsetDateTime::now_utc(),
-            session.expires_at
+            inp.expires_at
         )
         .fetch_one(&self.pool)
         .await?;

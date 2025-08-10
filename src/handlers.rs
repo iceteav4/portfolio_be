@@ -3,4 +3,5 @@ pub mod auth;
 pub mod health;
 pub mod import;
 pub mod portfolios;
+pub mod transactions;
 pub mod users;

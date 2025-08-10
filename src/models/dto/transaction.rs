@@ -1,7 +1,7 @@
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::models::{
     common::currency::Currency,
@@ -9,6 +9,8 @@ use crate::models::{
     domain::transaction::{BaseTransactionInfo, TxType},
 };
 use crate::utils::datetime::serialize_datetime;
+
+use super::pagination::{CursorPaginationQuery, CursorPaginationResponse};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTransaction {
@@ -56,7 +58,7 @@ pub struct TransactionResponse {
     pub price: String,
     pub tx_type: TxType,
 }
-
+#[allow(dead_code)]
 impl TransactionResponse {
     pub fn from_db_row(row: TransactionRow) -> Self {
         Self {
@@ -73,4 +75,19 @@ impl TransactionResponse {
             tx_type: row.tx_type.parse().unwrap(),
         }
     }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TransactionListResponse {
+    #[serde(flatten)]
+    pub cursor_pagination: CursorPaginationResponse,
+    pub items: Vec<TransactionResponse>,
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct TransactionQueryParams {
+    #[serde(flatten)]
+    pub pagination: CursorPaginationQuery,
+    pub portfolio_id: String,
+    pub asset_id: String,
 }

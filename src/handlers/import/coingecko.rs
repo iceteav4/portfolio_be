@@ -8,7 +8,7 @@ use axum::{
 use tracing::info;
 
 use crate::{
-    biz::asset::generate_asset_id,
+    biz::{asset::generate_asset_id, portfolio_asset::update_portfolio_asset_stat},
     db::repositories::{
         asset::AssetRepo, portfolio::PortfolioRepo, portfolio_asset::PortfolioAssetRepo,
         transaction::TransactionRepo,
@@ -208,7 +208,7 @@ pub async fn import_portfolio_file(
     // save txs when have new tx
     let all_pa_txs = to_api_res!(
         tx_repo
-            .get_multi_txs_by_portfolio_id_asset_id(portfolio_id, &asset_id)
+            .get_multi_txs_by_portfolio_id_asset_id(portfolio_id, &asset_id, 10_000)
             .await
     );
     let external_id_to_tx: HashMap<String, TransactionRow> = all_pa_txs
@@ -242,11 +242,13 @@ pub async fn import_portfolio_file(
     }
     let create_multi_txs = CreateMultiTransaction {
         portfolio_id,
-        asset_id,
+        asset_id: asset_id.clone(),
         transactions: new_txs,
     };
     let new_txs = to_api_res!(tx_repo.create_multi_txs(create_multi_txs).await);
     info!("Total transactions created: {}", new_txs);
+
+    to_api_res!(update_portfolio_asset_stat(state.pool.clone(), portfolio_id, &asset_id).await);
 
     return ApiResponse::<GeneralResponse>::success_general_response();
 }

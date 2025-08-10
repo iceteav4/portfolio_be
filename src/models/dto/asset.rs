@@ -8,7 +8,7 @@ use crate::models::{
     database::asset::AssetRow,
 };
 
-use super::{coingecko::CoinDataResponse, paging_response::CursorPaginationQuery};
+use super::{coingecko::CoinDataResponse, pagination::CursorPaginationQuery};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AssetResponse {
