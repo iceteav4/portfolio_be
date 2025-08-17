@@ -15,28 +15,6 @@ impl TransactionRepo {
         Self { pool }
     }
 
-    // pub async fn create_tx(&self, inp: CreateTransaction) -> Result<TransactionRow, AppError> {
-    //     Ok (sqlx::query_as!(TransactionRow,
-    //         r#"INSERT INTO transactions (id, external_id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes)
-    //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-    //         RETURNING id, external_id, portfolio_id, asset_id, tx_type, quantity, price, fees, currency, executed_at, notes, created_at, updated_at
-    //         "#,
-    //         SNOWFLAKE_GENERATOR.generate().unwrap(),
-    //         inp.external_id,
-    //         inp.portfolio_id,
-    //         inp.asset_id,
-    //         inp.tx_type.to_string(),
-    //         inp.quantity,
-    //         inp.price,
-    //         inp.fees,
-    //         inp.currency.as_ref(),
-    //         inp.executed_at,
-    //         inp.notes,
-    //     )
-    //     .fetch_one(&self.pool)
-    //     .await?)
-    // }
-
     pub async fn create_multi_txs(&self, inp: CreateMultiTransaction) -> Result<u64, AppError> {
         if inp.transactions.is_empty() {
             return Ok(0);
@@ -50,7 +28,7 @@ impl TransactionRepo {
         );
 
         query_builder.push_values(inp.transactions, |mut b, item| {
-            b.push_bind(SNOWFLAKE_GENERATOR.generate().unwrap())
+            b.push_bind(item.id.unwrap_or(SNOWFLAKE_GENERATOR.generate().unwrap()))
                 .push_bind(item.external_id)
                 .push_bind(portfolio_id)
                 .push_bind(&asset_id)
@@ -68,20 +46,48 @@ impl TransactionRepo {
         Ok(result.rows_affected())
     }
 
-    pub async fn get_multi_txs_by_portfolio_id_asset_id(
+    pub async fn get_multi_txs_by_portfolio_and_asset_with_paging(
         &self,
         portfolio_id: i64,
         asset_id: &str,
+        page: u32,
         limit: u32,
     ) -> Result<Vec<TransactionRow>, AppError> {
+        let query_limit = limit as i64;
+        let query_offset = ((page - 1) * limit) as i64;
         Ok(sqlx::query_as!(
             TransactionRow,
-            r#"SELECT * FROM transactions WHERE portfolio_id = $1 AND asset_id = $2 ORDER BY executed_at DESC LIMIT $3"#,
+            r#"SELECT * FROM transactions WHERE portfolio_id = $1 AND asset_id = $2 ORDER BY executed_at DESC LIMIT $3 OFFSET $4"#,
             portfolio_id,
             asset_id,
-            limit as i32
+            query_limit,
+            query_offset
         )
         .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn get_one_by_id(&self, tx_id: i64) -> Result<Option<TransactionRow>, AppError> {
+        Ok(sqlx::query_as!(
+            TransactionRow,
+            r#"SELECT * FROM transactions WHERE id = $1"#,
+            tx_id
+        )
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+
+    pub async fn count_txs_by_portfolio_and_asset(
+        &self,
+        portfolio_id: i64,
+        asset_id: &str,
+    ) -> Result<Option<i64>, AppError> {
+        Ok(sqlx::query_scalar!(
+            r#"SELECT COUNT(*) FROM transactions WHERE portfolio_id = $1 AND asset_id = $2"#,
+            portfolio_id,
+            asset_id
+        )
+        .fetch_one(&self.pool)
         .await?)
     }
 
@@ -116,6 +122,13 @@ impl TransactionRepo {
 
         if let Some(price) = inp.price {
             separated.push("price = ").push_bind_unseparated(price);
+            need_update = true;
+        }
+
+        if let Some(currency) = inp.currency {
+            separated
+                .push("currency = ")
+                .push_bind_unseparated(currency.to_string());
             need_update = true;
         }
 

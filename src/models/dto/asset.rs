@@ -8,7 +8,10 @@ use crate::models::{
     database::asset::AssetRow,
 };
 
-use super::{coingecko::CoinDataResponse, pagination::CursorPaginationQuery};
+use super::{
+    coingecko::CoinDataResponse,
+    pagination::{default_limit, default_page},
+};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AssetResponse {
@@ -33,8 +36,10 @@ impl AssetResponse {
 
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct AssetQueryParams {
-    #[serde(flatten)]
-    pub pagination: CursorPaginationQuery,
+    #[serde(default = "default_page")]
+    pub page: u32,
+    #[serde(default = "default_limit")]
+    pub limit: u32,
     pub asset_type: Option<AssetType>,
 }
 

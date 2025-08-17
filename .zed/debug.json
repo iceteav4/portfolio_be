@@ -8,6 +8,7 @@
     "program": "$ZED_WORKTREE_ROOT/target/debug/portfolio_be",
     "sourceLanguages": ["rust"],
     "request": "launch",
-    "adapter": "CodeLLDB" // GDB is available on non arm macs as well as linux,
+    "adapter": "CodeLLDB", // GDB is available on non arm macs as well as linux,
+    "justMyCode": true
   }
 ]

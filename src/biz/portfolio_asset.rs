@@ -14,7 +14,7 @@ pub async fn update_portfolio_asset_stat(
 ) -> Result<(), AppError> {
     let tx_repo = TransactionRepo::new(pool.clone());
     let tx_rows = tx_repo
-        .get_multi_txs_by_portfolio_id_asset_id(pfl_id, asset_id, 10_000)
+        .get_multi_txs_by_portfolio_and_asset_with_paging(pfl_id, asset_id, 1, 10_000)
         .await?;
 
     let mut holding_amount = Decimal::ZERO;
@@ -26,12 +26,12 @@ pub async fn update_portfolio_asset_stat(
         match tx_type {
             TxType::Buy => {
                 holding_amount += row.quantity;
-                total_cost += row.price * row.quantity;
+                total_cost += row.price * row.quantity + row.fees;
             }
             TxType::Sell => {
                 holding_amount -= row.quantity;
                 sold_amount += row.quantity;
-                total_revenue += row.price * row.quantity;
+                total_revenue += row.price * row.quantity - row.fees;
             }
             TxType::TransferIn => {
                 holding_amount += row.quantity;

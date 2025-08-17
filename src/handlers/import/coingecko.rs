@@ -208,7 +208,7 @@ pub async fn import_portfolio_file(
     // save txs when have new tx
     let all_pa_txs = to_api_res!(
         tx_repo
-            .get_multi_txs_by_portfolio_id_asset_id(portfolio_id, &asset_id, 10_000)
+            .get_multi_txs_by_portfolio_and_asset_with_paging(portfolio_id, &asset_id, 1, 10_000)
             .await
     );
     let external_id_to_tx: HashMap<String, TransactionRow> = all_pa_txs
@@ -229,10 +229,11 @@ pub async fn import_portfolio_file(
             // external transaction existed, update current transaction
             let update_tx = UpdateTransaction {
                 tx_type: Some(base_tx_info.tx_type),
-                notes: base_tx_info.notes,
-                quantity: Some(base_tx_info.quantity),
                 price: Some(base_tx_info.price),
+                quantity: Some(base_tx_info.quantity),
                 fees: Some(base_tx_info.fees),
+                currency: Some(base_tx_info.currency),
+                notes: base_tx_info.notes,
                 executed_at: Some(base_tx_info.executed_at),
             };
             to_api_res!(tx_repo.update_tx_by_id(tx.id, update_tx).await);

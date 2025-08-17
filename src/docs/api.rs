@@ -31,6 +31,12 @@ use crate::models::dto;
         // Import endpoints
         handlers::import::coingecko::import_portfolio_file,
         handlers::import::coingecko::get_coin_data_by_id,
+
+        // Transaction endpoints
+        handlers::transactions::get_transactions,
+        handlers::transactions::create_transaction,
+        handlers::transactions::get_detail_transaction,
+        handlers::transactions::update_transaction,
     ),
     components(
         // List your schema components here
@@ -40,6 +46,8 @@ use crate::models::dto;
             dto::auth::LoginWithPasswordRequest,
             dto::auth::SignUpWithPasswordRequest,
             dto::auth::AuthResponse,
+            dto::pagination::CursorPaginationResponse,
+            dto::pagination::NumberPaginationResponse,
             dto::portfolio::CreatePortfolioRequest,
             dto::portfolio::PortfolioResponse,
             dto::portfolio::BriefPortfolioListResponse,
@@ -52,7 +60,8 @@ use crate::models::dto;
             dto::health::HealthResponse,
             dto::coingecko::CoinDataResponse,
             dto::transaction::TransactionResponse,
-            dto::transaction::TransactionListResponse
+            dto::transaction::TransactionListResponse,
+            dto::transaction::CreateTransactionRequest,
         )
     ),
     tags(

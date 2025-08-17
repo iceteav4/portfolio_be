@@ -38,11 +38,10 @@ pub async fn get_all_assets(
     Query(params): Query<AssetQueryParams>,
 ) -> ApiResponse<AssetListResponse> {
     let asset_repo = AssetRepo::new(state.pool.clone());
-    let limit = params.pagination.limit.unwrap_or(50);
     let asset_type = params.asset_type.map(|t| t.to_string());
     let assets = to_api_res!(
         asset_repo
-            .get_multi_with_cursor(asset_type, params.pagination.after, limit)
+            .get_multi_with_paging(asset_type, params.page, params.limit)
             .await
     );
     return ApiResponse::success(AssetListResponse {
