@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    portfolio_id,\n                    asset_id,\n                    created_at,\n                    updated_at,\n                    holding_amount,\n                    total_cost,\n                    avg_buy_price,\n                    sold_amount,\n                    total_revenue,\n                    avg_sell_price\n                FROM portfolio_assets\n                WHERE portfolio_id = $1 AND asset_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "portfolio_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "asset_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "holding_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_cost",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "avg_buy_price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "sold_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "total_revenue",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "avg_sell_price",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "697b99cc3de175e63aa66d2eb4db4f093d68aec15bc2ba6e07f6f46f99c4a547"
+}

@@ -112,7 +112,7 @@ pub async fn create_portfolio_asset(
 
 #[utoipa::path(
     get,
-    path = "/api/portfolios/{id}",
+    path = "/api/portfolios/{portfolio_id}",
     responses(
         (status = 200, description = "Success", body = ApiResponse<PortfolioResponse>),
         (status = 500, description = "Internal server error")
@@ -120,11 +120,11 @@ pub async fn create_portfolio_asset(
 )]
 pub async fn get_portfolio_by_id(
     State(state): State<AppState>,
-    Path(id): Path<String>,
+    Path(portfolio_id): Path<String>,
 ) -> ApiResponse<PortfolioResponse> {
-    info!("Get portfolio with id {}", id);
+    info!("Get portfolio with id {}", portfolio_id);
     let pfl_repo = PortfolioRepo::new(state.pool.clone());
-    let pfl_rs = pfl_repo.get_one_by_id(id.parse().unwrap()).await;
+    let pfl_rs = pfl_repo.get_one_by_id(portfolio_id.parse().unwrap()).await;
     let pfl_row = match pfl_rs {
         Err(e) => return ApiResponse::from(e),
         Ok(None) => {

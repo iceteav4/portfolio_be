@@ -4,7 +4,8 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, EnumString, Display)]
-#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum UserStatus {
     Active,
     Inactive,

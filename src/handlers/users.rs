@@ -12,7 +12,7 @@ use crate::{db::repositories::user::UserRepo, models::dto::user::UserResponse};
 
 #[utoipa::path(
     get,
-    path = "/api/users/{id}",
+    path = "/api/users/{user_id}",
     responses(
         (status = 200, description = "User found", body = ApiResponse<UserResponse>),
         (status = 500, description = "Internal server error")
@@ -20,11 +20,11 @@ use crate::{db::repositories::user::UserRepo, models::dto::user::UserResponse};
 )]
 pub async fn get_user_by_id(
     State(state): State<AppState>,
-    Path(id): Path<String>,
+    Path(user_id): Path<String>,
 ) -> ApiResponse<UserResponse> {
-    info!("Get user by id {}", id);
+    info!("Get user by id {}", user_id);
     let user = UserRepo::new(state.pool.clone())
-        .get_by_id(id.parse().unwrap())
+        .get_by_id(user_id.parse().unwrap())
         .await;
     match user {
         Ok(Some(user)) => ApiResponse::success(UserResponse {

@@ -6,9 +6,11 @@ use strum::{Display, EnumString};
 use utoipa::ToSchema;
 
 #[derive(Debug, Deserialize, Serialize, EnumString, Display, ToSchema, PartialEq)]
-#[strum(serialize_all = "lowercase")]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum AssetType {
+    #[serde(rename = "CRYPTO")]
     Crypto,
+    #[serde(rename = "STOCK")]
     Stock,
 }
 

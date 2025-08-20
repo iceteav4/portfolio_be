@@ -152,7 +152,7 @@ pub async fn get_transactions(
 
 #[utoipa::path(
     get,
-    path = "/api/transactions/{id}",
+    path = "/api/transactions/{transaction_id}",
     responses(
         (status = 200, description = "Success", body = ApiResponse<TransactionResponse>),
     )
@@ -182,7 +182,7 @@ pub async fn get_detail_transaction(
 
 #[utoipa::path(
     patch,
-    path = "/api/transactions/{id}",
+    path = "/api/transactions/{transaction_id}",
     responses(
         (status = 200, description = "Success", body = ApiResponse<GeneralResponse>),
     )

@@ -14,9 +14,6 @@
 .env.test
 .env.production
 
-# SQLx offline data
-.sqlx/
-
 # Debug files
 *.pdb
 

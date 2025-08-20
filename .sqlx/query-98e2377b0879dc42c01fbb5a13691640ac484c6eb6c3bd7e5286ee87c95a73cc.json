@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO portfolio_assets (portfolio_id, asset_id, created_at, updated_at)\n                VALUES ($1, $2, $3, $4)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "98e2377b0879dc42c01fbb5a13691640ac484c6eb6c3bd7e5286ee87c95a73cc"
+}

@@ -1,4 +1,5 @@
 use axum::Json;
+use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::{
     Extension,
@@ -50,6 +51,29 @@ pub async fn get_all_assets(
             .map(|item| AssetResponse::from_db_row(item))
             .collect(),
     });
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/assets/{asset_id}",
+    params(AssetQueryParams),
+    responses(
+        (status = 200, description = "Success", body = ApiResponse<AssetListResponse>)
+    )
+)]
+pub async fn get_detail_asset(
+    State(state): State<AppState>,
+    Extension(_claims): Extension<Claims>,
+    Path(asset_id): Path<String>,
+) -> ApiResponse<AssetResponse> {
+    let asset_repo = AssetRepo::new(state.pool.clone());
+    let asset = to_api_res!(asset_repo.get_one_by_id(&asset_id).await);
+    match asset {
+        Some(row) => return ApiResponse::success(AssetResponse::from_db_row(row)),
+        None => {
+            return ApiResponse::error(StatusCode::NOT_FOUND, "Asset not found");
+        }
+    }
 }
 
 #[utoipa::path(

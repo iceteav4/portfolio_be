@@ -86,7 +86,7 @@ impl AssetRepo {
         query_builder
             .push(" ORDER BY id ASC LIMIT ")
             .push_bind(limit as i64);
-        query_builder.push(" OFFSET ").push_bind(page as i64);
+        query_builder.push(" OFFSET ").push_bind((page - 1) as i64);
 
         Ok(query_builder
             .build_query_as::<AssetRow>()

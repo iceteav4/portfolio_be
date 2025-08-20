@@ -5,17 +5,15 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use utoipa::ToSchema;
 
 use crate::{
-    models::{
-        common::currency::Currency,
-        dto::transaction::CreateTransactionRequest,
-    },
+    models::{common::currency::Currency, dto::transaction::CreateTransactionRequest},
     utils::{error::AppError, snowflake::SNOWFLAKE_GENERATOR},
 };
 
 use super::coingecko::RawTransaction;
 
 #[derive(Debug, Serialize, Deserialize, EnumString, Display, ToSchema)]
-#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum TxType {
     Buy,
     Sell,
@@ -44,10 +42,10 @@ impl BaseTransactionInfo {
             fees: raw_tx.fees.parse().unwrap_or(Decimal::ZERO),
             executed_at: OffsetDateTime::parse(&raw_tx.transaction_timestamp, &Rfc3339)?,
             notes: raw_tx.notes,
-            currency: raw_tx.currency.to_lowercase().parse()?,
+            currency: raw_tx.currency.to_uppercase().parse()?,
             quantity: raw_tx.quantity.parse()?,
             price: raw_tx.price.parse()?,
-            tx_type: raw_tx.transaction_type.to_lowercase().parse()?,
+            tx_type: raw_tx.transaction_type.to_uppercase().parse()?,
         })
     }
 

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE portfolio_assets\n            SET updated_at = $1,\n                holding_amount = $2,\n                total_cost = $3,\n                avg_buy_price = $4,\n                sold_amount = $5,\n                total_revenue = $6,\n                avg_sell_price = $7\n            WHERE portfolio_id = $8 AND asset_id = $9\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "123a35928a48900b97d6e60077f2ce3445d4aa970529302849b5db63f4275623"
+}

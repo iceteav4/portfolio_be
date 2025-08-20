@@ -20,6 +20,7 @@ use crate::models::dto;
 
         // Asset endpoints
         handlers::assets::get_all_assets,
+        handlers::assets::get_detail_asset,
         handlers::assets::create_asset,
 
         // Portfolio endpoints
